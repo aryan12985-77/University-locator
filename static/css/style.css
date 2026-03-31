@@ -1,0 +1,133 @@
+body{
+margin:0;
+font-family:Arial;
+}
+
+/* HOME */
+.home-container{
+height:100vh;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+}
+
+.search-wrapper{
+position:relative;
+width:300px;
+}
+
+#homeSearch{
+width:100%;
+padding:10px;
+}
+
+#homeSuggestions{
+position:absolute;
+background:white;
+width:100%;
+max-height:150px;
+overflow:auto;
+}
+
+.suggestion-item{
+padding:8px;
+cursor:pointer;
+}
+
+/* MAP */
+#map{
+position:absolute;
+top:0;
+left:0;
+width:100%;
+height:100vh;
+z-index:1;
+}
+
+/* SIDEBAR */
+.sidebar{
+position:fixed;
+top:0;
+left:0;
+width:220px;
+height:100vh;
+background:#1e1e2f;
+color:white;
+padding:15px;
+z-index:1000;
+}
+
+.sidebar a{
+display:block;
+margin:10px 0;
+color:white;
+text-decoration:none;
+}
+
+/* TOGGLE */
+.toggle-btn{
+position:fixed;
+top:10px;
+left:10px;
+background:#007bff;
+color:white;
+padding:8px;
+z-index:2000;
+cursor:pointer;
+}
+
+/* INFO */
+#destinationInfo{
+position:fixed;
+bottom:20px;
+right:20px;
+background:white;
+padding:10px;
+z-index:2000;
+}
+
+/* BUTTON */
+#locateBtn{
+position:fixed;
+bottom:20px;
+left:20px;
+z-index:2000;
+}
+
+.main-container{
+    display:flex;
+    height:100vh;
+}
+
+.sidebar{
+    width:250px;
+    background:#1e1e2f;
+    color:white;
+    padding:20px;
+}
+
+.map-container{
+    flex:1;
+    position:relative;
+}
+
+#map{
+    height:100%;
+    width:100%;
+}
+
+.info-box {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 250px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 999;
+}

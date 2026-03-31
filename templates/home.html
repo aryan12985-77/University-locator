@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Campus Navigator</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<div class="home-container">
+
+<h1>Campus Navigator</h1>
+<p>Find departments, offices and facilities easily</p>
+
+<div class="search-wrapper">
+<input type="text" id="homeSearch" placeholder="Search place...">
+<div id="homeSuggestions"></div>
+</div>
+
+<button onclick="goToMap()">Search</button>
+
+</div>
+
+<script>
+const input = document.getElementById("homeSearch");
+const box = document.getElementById("homeSuggestions");
+
+input.addEventListener("input", function(){
+let q = input.value;
+
+if(!q){
+box.innerHTML="";
+return;
+}
+
+fetch("/suggest?q="+q)
+.then(res=>res.json())
+.then(data=>{
+box.innerHTML="";
+data.forEach(item=>{
+let div=document.createElement("div");
+div.className="suggestion-item";
+div.innerText=item;
+div.onclick=()=>window.location="/map?destination="+item;
+box.appendChild(div);
+});
+});
+});
+
+function goToMap(){
+let val=input.value;
+if(val) window.location="/map?destination="+val;
+}
+</script>
+
+</body>
+</html>

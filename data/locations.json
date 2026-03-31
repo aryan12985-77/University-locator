@@ -1,0 +1,186 @@
+[
+  {
+    "name": "Cricket Ground",
+    "building": "Sports Area",
+    "floor": "Ground",
+    "lat": 26.812312,
+    "lng": 75.892432
+  },
+  {
+    "name": "Tech Lawn",
+    "building": "Tech Area",
+    "floor": "Ground",
+    "lat": 26.812902,
+    "lng": 75.893733
+  },
+  {
+    "name": "Basketball Court",
+    "building": "Sports Area",
+    "floor": "Ground",
+    "lat": 26.812865,
+    "lng": 75.893415
+  },
+  {
+    "name": "Parking Area",
+    "building": "Campus Parking",
+    "floor": "Ground",
+    "lat": 26.812899,
+    "lng": 75.892949
+  },
+  {
+    "name": "Gate 1",
+    "building": "Main Gate",
+    "floor": "Ground",
+    "lat": 26.812677,
+    "lng": 75.894521
+  },
+  {
+    "name": "Football Ground",
+    "building": "Sports Area",
+    "floor": "Ground",
+    "lat": 26.812581,
+    "lng": 75.894367
+  },
+  {
+    "name": "Gate 1 Security",
+    "building": "Security",
+    "floor": "Ground",
+    "lat": 26.812713,
+    "lng": 75.894570
+  },
+  {
+    "name": "Agriculture Area",
+    "building": "Cultural Area",
+    "floor": "Ground",
+    "lat": 26.811320,
+    "lng": 75.893932
+  },
+  {
+    "name": "Admin Block",
+    "building": "Admin Block",
+    "floor": "Multiple",
+    "lat": 26.812465,
+    "lng": 75.891278
+  },
+  {
+    "name": "Mess",
+    "building": "Mess Block",
+    "floor": "Multiple",
+    "lat": 26.811383,
+    "lng": 75.891656
+  },
+  {
+    "name": "Narayana Hostel",
+    "building": "Hostel",
+    "floor": "Multiple",
+    "lat": 26.810992,
+    "lng": 75.892528
+  },
+  {
+    "name": "Hostel Lawn",
+    "building": "Hostel Area",
+    "floor": "Ground",
+    "lat": 26.811147,
+    "lng": 75.891933
+  },
+  {
+    "name": "Shingar I",
+    "building": "Hostel",
+    "floor": "Multiple",
+    "lat": 26.811459,
+    "lng": 75.891742
+  },
+  {
+    "name": "Shingar II",
+    "building": "Hostel",
+    "floor": "Multiple",
+    "lat": 26.810891,
+    "lng": 75.891965
+  },
+  {
+    "name": "Academic Block",
+    "building": "Academic Block",
+    "floor": "Multiple",
+    "lat": 26.811171,
+    "lng": 75.889791
+  },
+  {
+    "name": "Gate 3",
+    "building": "Gate",
+    "floor": "Ground",
+    "lat": 26.812604,
+    "lng": 75.888329
+  },
+  {
+    "name": "Hostel 1.19",
+    "building": "Hostel",
+    "floor": "Multiple",
+    "lat": 26.811511,
+    "lng": 75.885230
+  },
+  {
+    "name": "American Football Ground",
+    "building": "Sports Area",
+    "floor": "Ground",
+    "lat": 26.812348,
+    "lng": 75.890635
+  },
+  {
+    "name": "Gate 4",
+    "building": "Gate",
+    "floor": "Ground",
+    "lat": 26.813067,
+    "lng": 75.891446
+  },
+  {
+    "name": "New Building",
+    "building": "Academic Area",
+    "floor": "Multiple",
+    "lat": 26.811729,
+    "lng": 75.892559
+  },
+  {
+    "name": "Girls Hostel",
+    "building": "Hostel",
+    "floor": "Multiple",
+    "lat": 26.811640,
+    "lng": 75.893218
+  }, 
+  
+  {
+  "name": "Tech Block",
+  "building": "Tech Block",
+  "floor": "Multiple",
+  "lat": 26.812055,
+  "lng": 75.893885,
+  "type": "building",
+  "entry_lat": 26.812020,
+  "entry_lng": 75.893800
+},
+
+{
+  "name": "Auditorium",
+  "building": "Tech Block",
+  "floor": "1st Floor",
+  "lat": 26.812060,
+  "lng": 75.893890,
+  "entry_lat": 26.812020,
+  "entry_lng": 75.893800,
+  "type": "room",
+  "image": "/static/images/auditorium.jpg",
+  "instructions": "Enter Tech Block, go to 1st floor using stairs or lift, walk straight through corridor, auditorium will be on right side."
+},
+
+{
+  "name": "CSE Department",
+  "building": "Tech Block",
+  "floor": "2nd Floor",
+  "lat": 26.812070,
+  "lng": 75.893900,
+  "entry_lat": 26.812020,
+  "entry_lng": 75.893800,
+  "type": "department",
+  "image": "/static/images/cse_department.jpg",
+  "instructions": "Go to 2nd floor, turn left from stairs, CSE department is at the end of the corridor."
+}
+]
