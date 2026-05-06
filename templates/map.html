@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>Campus Navigator</title>
 
-<title>Campus Navigator</title>
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
-
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    
+    <!-- Routing CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
 </head>
 
 <body>
@@ -29,6 +31,7 @@
 
         <div class="toggle-btn" onclick="toggleSidebar()">☰</div>
 
+        <!-- MAP -->
         <div id="map"></div>
 
         <div id="destinationInfo" class="info-box"></div>
@@ -39,13 +42,18 @@
 
 </div>
 
+<!-- ✅ PASS DESTINATION FROM FLASK -->
 <script>
-var destination = "{{ destination }}";
+    var destination = "{{ destination }}";
 </script>
 
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Routing JS -->
 <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
 
+<!-- ✅ YOUR MAIN LOGIC FILE -->
 <script src="{{ url_for('static', filename='js/map.js') }}"></script>
 
 </body>

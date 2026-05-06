@@ -35,6 +35,125 @@ padding:8px;
 cursor:pointer;
 }
 
+/* RESET */
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    overflow: hidden;
+}
+
+/* 🌈 ANIMATED GRADIENT BACKGROUND */
+.home-container {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background: linear-gradient(270deg, #667eea, #764ba2, #6a11cb, #2575fc);
+    background-size: 800% 800%;
+
+    animation: gradientMove 10s ease infinite;
+}
+
+@keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* ✨ CONTENT ANIMATION */
+.content {
+    text-align: center;
+    color: white;
+
+    animation: fadeInUp 1.5s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 🧠 TITLE */
+.title {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 10px;
+
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from { text-shadow: 0 0 10px #fff; }
+    to { text-shadow: 0 0 20px #00f2ff; }
+}
+
+/* SUBTITLE */
+.subtitle {
+    font-size: 18px;
+    margin-bottom: 30px;
+    opacity: 0.9;
+}
+
+/* 🔍 SEARCH BOX */
+.search-box {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* INPUT */
+.search-box input {
+    padding: 12px 20px;
+    border-radius: 30px;
+    border: none;
+    outline: none;
+    width: 250px;
+
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+
+    transition: 0.3s;
+}
+
+/* INPUT FOCUS EFFECT */
+.search-box input:focus {
+    width: 300px;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* BUTTON */
+.search-box button {
+    padding: 12px 20px;
+    border-radius: 30px;
+    border: none;
+
+    background: #00f2ff;
+    color: black;
+    font-weight: bold;
+
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+/* BUTTON HOVER */
+.search-box button:hover {
+    transform: scale(1.1);
+    background: #00c6ff;
+}
+
+/* BUTTON CLICK EFFECT */
+.search-box button:active {
+    transform: scale(0.95);
+}
+
 /* MAP */
 #map{
 position:absolute;

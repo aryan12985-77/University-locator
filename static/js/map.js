@@ -10,14 +10,14 @@ var map = L.map('map');
 
 window.onload = function () {
 
-    map.setView([26.8123, 75.6924], 16);
+    map.setView([26.8123, 75.8935], 18);  // fixed coords consistency
 
     L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         { attribution: 'Tiles © Esri' }
     ).addTo(map);
 
-    // Fix blank map
+    // Fix blank map issue
     setTimeout(() => {
         map.invalidateSize();
     }, 400);
@@ -39,7 +39,7 @@ function loadDestination(){
 
             destinationData = loc;
 
-            // ✅ CLEAN SIDEBAR (NO BIG IMAGE)
+            // Sidebar info
             document.getElementById("destinationInfo").innerHTML =
             "<b>Destination:</b> "+loc.name+"<br>"+
             "<b>Building:</b> "+loc.building+"<br>"+
@@ -49,7 +49,7 @@ function loadDestination(){
                 : ""
             );
 
-            // ✅ AUTO GET USER LOCATION
+            // Auto detect user location
             locateUser();
 
         } else {
@@ -71,8 +71,8 @@ function updateUserLocation(lat, lng){
     }
 
     userMarker = L.marker([lat, lng])
-    .addTo(map)
-    .bindPopup("📍 You are here");
+        .addTo(map)
+        .bindPopup("📍 You are here");
 
     drawRoute();
 }
@@ -83,23 +83,23 @@ function drawRoute(){
 
     if(!destinationData || !userLocation) return;
 
-    // remove old route
+    // Remove old route
     if(routingControl){
         try{ map.removeControl(routingControl); }catch(e){}
         routingControl = null;
     }
 
-    // remove old destination marker
+    // Remove old destination marker
     if(destinationMarker){
         try{ map.removeLayer(destinationMarker); }catch(e){}
         destinationMarker = null;
     }
 
-    // ✅ ENTRY POINT (for routing)
+    // Entry point logic
     let destLat = destinationData.entry_lat || destinationData.lat;
     let destLng = destinationData.entry_lng || destinationData.lng;
 
-    // ✅ POPUP CONTENT (SMALL IMAGE + TEXT)
+    // Popup content
     let popupContent =
         "<b>" + destinationData.name + "</b><br>" +
         "Floor: " + destinationData.floor + "<br><br>" +
@@ -113,13 +113,13 @@ function drawRoute(){
             : ""
         );
 
-    // ✅ DESTINATION MARKER
+    // Destination marker
     destinationMarker = L.marker([destinationData.lat, destinationData.lng])
         .addTo(map)
         .bindPopup(popupContent)
         .openPopup();
 
-    // ✅ ROUTE (to entry point)
+    // Routing (ONLY routing machine, no custom roads)
     routingControl = L.Routing.control({
         waypoints:[
             L.latLng(userLocation.lat, userLocation.lng),
@@ -134,7 +134,7 @@ function drawRoute(){
         createMarker: () => null
     }).addTo(map);
 
-    // ✅ AUTO FIT MAP
+    // Fit map view
     setTimeout(() => {
         try {
             let group = L.featureGroup([userMarker, destinationMarker]);

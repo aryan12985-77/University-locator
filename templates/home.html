@@ -1,57 +1,103 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html>
 <head>
-<title>Campus Navigator</title>
+    <title>Campus Navigator</title><!-- CSS -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
 
-<body>
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
 
-<div class="home-container">
+</head><body><div class="home-container"><div class="content">
 
-<h1>Campus Navigator</h1>
-<p>Find departments, offices and facilities easily</p>
+    <h1 class="title">Campus Navigator</h1>
 
-<div class="search-wrapper">
-<input type="text" id="homeSearch" placeholder="Search place...">
-<div id="homeSuggestions"></div>
+    <p class="subtitle">
+        Find departments, offices and facilities easily
+    </p>
+
+    <!-- SEARCH -->
+    <div class="search-wrapper">
+        <input type="text" id="homeSearch" placeholder="Search place..." autocomplete="off">
+        <div id="homeSuggestions"></div>
+    </div>
+
+    <button class="search-btn" onclick="goToMap()">Search</button>
+
 </div>
 
-<button onclick="goToMap()">Search</button>
+</div><script>
 
-</div>
-
-<script>
 const input = document.getElementById("homeSearch");
 const box = document.getElementById("homeSuggestions");
 
-input.addEventListener("input", function(){
-let q = input.value;
+// 🔍 LIVE SEARCH SUGGESTIONS
+input.addEventListener("input", function () {
 
-if(!q){
-box.innerHTML="";
-return;
+    let q = input.value.trim();
+
+    if (!q) {
+        box.innerHTML = "";
+        box.style.display = "none";
+        return;
+    }
+
+    fetch("/suggest?q=" + q)
+    .then(res => res.json())
+    .then(data => {
+
+        box.innerHTML = "";
+
+        if (!data || data.length === 0) {
+            box.style.display = "block";
+            box.innerHTML = "<div class='suggestion-item'>No results found</div>";
+            return;
+        }
+
+        box.style.display = "block";
+
+        data.forEach(item => {
+
+            let div = document.createElement("div");
+            div.className = "suggestion-item";
+            div.innerText = item;
+
+            div.onclick = () => {
+                window.location = "/map?destination=" + encodeURIComponent(item);
+            };
+
+            box.appendChild(div);
+        });
+
+    })
+    .catch(err => {
+        console.log("Error:", err);
+        box.style.display = "none";
+    });
+});
+
+
+// 🚀 SEARCH BUTTON
+function goToMap() {
+    let val = input.value.trim();
+    if (val) {
+        window.location = "/map?destination=" + encodeURIComponent(val);
+    }
 }
 
-fetch("/suggest?q="+q)
-.then(res=>res.json())
-.then(data=>{
-box.innerHTML="";
-data.forEach(item=>{
-let div=document.createElement("div");
-div.className="suggestion-item";
-div.innerText=item;
-div.onclick=()=>window.location="/map?destination="+item;
-box.appendChild(div);
-});
-});
+
+// ⌨️ ENTER KEY SUPPORT
+input.addEventListener("keypress", function (e) {
+    if (e.key === "Enter") {
+        goToMap();
+    }
 });
 
-function goToMap(){
-let val=input.value;
-if(val) window.location="/map?destination="+val;
-}
-</script>
 
-</body>
+// ❌ CLOSE SUGGESTIONS WHEN CLICK OUTSIDE
+document.addEventListener("click", function (e) {
+    if (!document.querySelector(".search-wrapper").contains(e.target)) {
+        box.style.display = "none";
+    }
+});
+
+</script></body>
 </html>
