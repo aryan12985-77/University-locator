@@ -1,59 +1,57 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Campus Navigator</title>
-
-    <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    
-    <!-- Routing CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Map — Campus Navigator</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
-
 <body>
 
-<div class="main-container">
+<div class="map-page">
 
-    <!-- SIDEBAR -->
-    <div class="sidebar" id="sidebar">
-        <h2>Campus Navigator</h2>
-
-        <a href="/">🏠 New Search</a>
-        <a href="#" onclick="locateUser()">📍 My Location</a>
-        <a href="#" onclick="toggleSidebar()">🗺 Toggle View</a>
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <a class="logo" href="/">
+      <div class="logo-icon">🧭</div>
+      <span>Campus Navigator</span>
+    </a>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <a href="/directions?q={{ destination | urlencode }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;border-radius:50px;">
+        ← Directions
+      </a>
+      <a href="/" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;border-radius:50px;">
+        🔍 New Search
+      </a>
     </div>
+  </div>
 
-    <!-- MAP AREA -->
-    <div class="map-container">
+  <!-- MAP -->
+  <div class="map-full-container">
+    <div id="map"></div>
 
-        <div class="toggle-btn" onclick="toggleSidebar()">☰</div>
+    <!-- Locate FAB -->
+    <button class="locate-fab" onclick="locateUser()" title="My Location">📍</button>
 
-        <!-- MAP -->
-        <div id="map"></div>
-
-        <div id="destinationInfo" class="info-box"></div>
-
-        <button id="locateBtn">📍</button>
-
+    <!-- Floating info panel (populated by JS) -->
+    <div class="glass floating-info" id="floatingInfo" style="display:none;">
+      <div class="fi-title" id="fiTitle">—</div>
+      <div class="fi-meta"  id="fiMeta">—</div>
+      <div class="fi-row">
+        <a href="/" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;">🔍 New Search</a>
+        <button class="btn-primary" onclick="locateUser()" style="padding:8px 14px;font-size:0.78rem;">📍 My Route</button>
+      </div>
     </div>
+  </div>
 
 </div>
 
-<!-- ✅ PASS DESTINATION FROM FLASK -->
-<script>
-    var destination = "{{ destination }}";
-</script>
-
-<!-- Leaflet JS -->
+<script>var destination = {{ destination | tojson }};</script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<!-- Routing JS -->
 <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
-
-<!-- ✅ YOUR MAIN LOGIC FILE -->
 <script src="{{ url_for('static', filename='js/map.js') }}"></script>
 
 </body>

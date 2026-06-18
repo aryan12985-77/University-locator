@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>{{ location.name if location else 'Not Found' }} — Campus Navigator</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="results-page">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <a class="logo" href="/">
+      <div class="logo-icon">🧭</div>
+      <span>Campus Navigator</span>
+    </a>
+  </div>
+
+  <div class="results-body">
+
+    <!-- BACK -->
+    <button class="back-btn" onclick="history.back()">
+      ← Back to Search
+    </button>
+
+    {% if location %}
+
+    <!-- LOCATION CARD -->
+    <div class="glass location-card a1">
+      <div class="loc-header">
+        <div class="loc-icon-box">📍</div>
+        <div>
+          <div class="loc-title">{{ location.name }}</div>
+          <div class="loc-meta">
+            <span>🏢 {{ location.building }}</span>
+            <span>📶 {{ location.floor }}</span>
+          </div>
+        </div>
+      </div>
+
+      {% if location.image %}
+      <img
+        src="{{ location.image }}"
+        alt="{{ location.name }}"
+        class="loc-image"
+        onerror="this.style.display='none'"
+      >
+      {% endif %}
+
+      <div class="tags">
+        <span class="tag tag-blue">📍 Campus Location</span>
+        <span class="tag tag-green">🏗 {{ location.building }}</span>
+        {% if location.floor != 'Ground' %}
+        <span class="tag tag-cyan">🔢 {{ location.floor }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- DIRECTIONS CARD -->
+    <div class="glass directions-card a2">
+      <div class="section-title">Step-by-Step Directions</div>
+      <ul class="steps-list" id="stepsList">
+        <!-- Built by JS -->
+      </ul>
+    </div>
+
+    <!-- MAP SECTION -->
+    <div class="glass map-section a3">
+      <div class="section-title">Map & Navigation</div>
+      <p class="map-desc">
+        Want to see the route visually? Open the live map to get real-time GPS navigation from your current location to this place.
+      </p>
+      <div class="map-btn-row">
+        <button class="btn-primary" onclick="toggleMap()">
+          <span id="mapBtnIcon">🗺</span>
+          <span id="mapBtnTxt">Show on Map</span>
+        </button>
+        <a class="btn-secondary" href="/map?destination={{ location.name | urlencode }}">
+          🧭 Full Map View
+        </a>
+      </div>
+
+      <!-- Inline Map -->
+      <div id="inlineMapContainer">
+        <div class="map-loading" id="mapLoading">
+          <div class="spinner"></div>
+          <p>Loading map...</p>
+        </div>
+        <div id="inlineMap"></div>
+      </div>
+    </div>
+
+    {% else %}
+
+    <!-- NOT FOUND -->
+    <div class="glass not-found-card a1">
+      <div class="nf-icon">🔍</div>
+      <h2>Place Not Found</h2>
+      <p>We couldn't find "<strong>{{ query }}</strong>" in the campus database. Try a different name or browse categories below.</p>
+      <a class="btn-primary" href="/">← Back to Home</a>
+    </div>
+
+    {% endif %}
+
+  </div>
+</div>
+
+{% if location %}
+<script>
+const LOC = {
+  name:         {{ location.name | tojson }},
+  building:     {{ location.building | tojson }},
+  floor:        {{ location.floor | tojson }},
+  lat:          {{ location.lat }},
+  lng:          {{ location.lng }},
+  entry_lat:    {{ location.entry_lat if location.entry_lat else location.lat }},
+  entry_lng:    {{ location.entry_lng if location.entry_lng else location.lng }},
+  instructions: {{ (location.instructions or '') | tojson }}
+};
+
+/* ---- BUILD STEPS ---- */
+function buildSteps() {
+  const list = document.getElementById("stepsList");
+  const steps = [];
+
+  steps.push({
+    text: "Head to <strong>" + LOC.building + "</strong> on campus",
+    sub: "Use the map below or ask campus security for directions to this building."
+  });
+
+  if (LOC.floor && LOC.floor.toLowerCase() !== "ground") {
+    steps.push({
+      text: "Go to the <strong>" + LOC.floor + "</strong>",
+      sub: "Take the stairs or elevator to reach the correct floor."
+    });
+  } else {
+    steps.push({
+      text: "Stay on the <strong>Ground Floor</strong>",
+      sub: "The location is on the ground level — no stairs needed."
+    });
+  }
+
+  if (LOC.instructions) {
+    const parts = LOC.instructions.split(/[.\n]+/).filter(s => s.trim().length > 3);
+    parts.forEach(p => steps.push({ text: p.trim(), sub: null }));
+  } else {
+    steps.push({
+      text: "Locate <strong>" + LOC.name + "</strong>",
+      sub: "Look for signs or ask nearby staff for assistance."
+    });
+  }
+
+  steps.push({
+    text: "You have arrived at <strong>" + LOC.name + "</strong> 🎉",
+    sub: "Your destination is here."
+  });
+
+  steps.forEach((s, i) => {
+    const delay = (i * 0.08).toFixed(2);
+    const li = document.createElement("li");
+    li.className = "step-item";
+    li.style.animationDelay = delay + "s";
+    li.innerHTML =
+      "<div class='step-num'>" + (i+1) + "</div>" +
+      "<div>" +
+        "<div class='step-text'>" + s.text + "</div>" +
+        (s.sub ? "<div class='step-sub'>" + s.sub + "</div>" : "") +
+      "</div>";
+    list.appendChild(li);
+  });
+}
+
+/* ---- INLINE MAP ---- */
+let mapInit = false;
+let inlineMap = null;
+
+function toggleMap() {
+  const container = document.getElementById("inlineMapContainer");
+  const btnTxt    = document.getElementById("mapBtnTxt");
+  const btnIcon   = document.getElementById("mapBtnIcon");
+  const visible   = container.style.display === "block";
+
+  if (visible) {
+    container.style.display = "none";
+    btnTxt.textContent = "Show on Map";
+    btnIcon.textContent = "🗺";
+    return;
+  }
+
+  container.style.display = "block";
+  btnTxt.textContent = "Hide Map";
+  btnIcon.textContent = "✕";
+
+  if (!mapInit) {
+    mapInit = true;
+    initInlineMap();
+  }
+}
+
+function initInlineMap() {
+  const loading = document.getElementById("mapLoading");
+
+  inlineMap = L.map("inlineMap", { zoomControl: true });
+
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "© Esri" }
+  ).addTo(inlineMap);
+
+  inlineMap.setView([LOC.lat, LOC.lng], 18);
+
+  const destIcon = L.divIcon({
+    className: "",
+    html: "<div style='background:linear-gradient(135deg,#4f46e5,#06b6d4);width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 4px 12px rgba(0,0,0,0.4)'></div>",
+    iconSize: [36, 36],
+    iconAnchor: [18, 36]
+  });
+
+  L.marker([LOC.lat, LOC.lng], { icon: destIcon })
+    .addTo(inlineMap)
+    .bindPopup("<b>" + LOC.name + "</b><br>" + LOC.building + " · " + LOC.floor)
+    .openPopup();
+
+  setTimeout(() => {
+    inlineMap.invalidateSize();
+    loading.style.opacity = "0";
+    setTimeout(() => { loading.style.display = "none"; }, 400);
+  }, 600);
+
+  /* Try GPS route */
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const uLat = pos.coords.latitude;
+      const uLng = pos.coords.longitude;
+
+      const userIcon = L.divIcon({
+        className: "",
+        html: "<div style='width:16px;height:16px;border-radius:50%;background:#10b981;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4)'></div>",
+        iconSize: [16,16], iconAnchor: [8,8]
+      });
+      L.marker([uLat, uLng], { icon: userIcon }).addTo(inlineMap).bindPopup("📍 You are here");
+
+      L.Routing.control({
+        waypoints: [L.latLng(uLat, uLng), L.latLng(LOC.entry_lat, LOC.entry_lng)],
+        lineOptions: { styles: [{ color: "#4f46e5", weight: 5, opacity: 0.85 }] },
+        routeWhileDragging: false,
+        addWaypoints: false,
+        draggableWaypoints: false,
+        createMarker: () => null,
+        show: false
+      }).addTo(inlineMap);
+
+      setTimeout(() => {
+        const bounds = L.latLngBounds([[uLat, uLng], [LOC.lat, LOC.lng]]);
+        inlineMap.fitBounds(bounds.pad(0.25));
+      }, 1200);
+    }, () => {});
+  }
+}
+
+buildSteps();
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+{% endif %}
+
+</body>
+</html>

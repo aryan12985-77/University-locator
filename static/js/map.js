@@ -1,188 +1,139 @@
-// ---------------- VARIABLES ----------------
-var userLocation = null;
-var routingControl = null;
-var destinationMarker = null;
+/* ============================================================
+   Campus Navigator — Map Logic
+   ============================================================ */
+
+var userLocation    = null;
+var routingControl  = null;
+var destinationMark = null;
+var userMarker      = null;
 var destinationData = null;
-var userMarker = null;
+var map             = null;
 
-// ---------------- MAP INIT ----------------
-var map = L.map('map');
+/* ---------- ICONS ---------- */
+function destIcon() {
+  return L.divIcon({
+    className: "",
+    html: "<div style='background:linear-gradient(135deg,#4f46e5,#06b6d4);width:38px;height:38px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 4px 14px rgba(0,0,0,0.45)'></div>",
+    iconSize:   [38, 38],
+    iconAnchor: [19, 38]
+  });
+}
+function userIcon() {
+  return L.divIcon({
+    className: "",
+    html: "<div style='width:18px;height:18px;border-radius:50%;background:#10b981;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4)'></div>",
+    iconSize:   [18, 18],
+    iconAnchor: [9, 9]
+  });
+}
 
+/* ---------- INIT ---------- */
 window.onload = function () {
+  map = L.map("map", { zoomControl: true });
+  map.setView([26.8123, 75.8935], 17);
 
-    map.setView([26.8123, 75.8935], 18);  // fixed coords consistency
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { attribution: "Tiles © Esri", maxZoom: 21 }
+  ).addTo(map);
 
-    L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: 'Tiles © Esri' }
-    ).addTo(map);
-
-    // Fix blank map issue
-    setTimeout(() => {
-        map.invalidateSize();
-    }, 400);
-
-    loadDestination();
+  setTimeout(() => map.invalidateSize(), 400);
+  loadDestination();
 };
 
+/* ---------- LOAD DESTINATION ---------- */
+function loadDestination() {
+  if (!destination) return;
 
-// ---------------- LOAD DESTINATION ----------------
-function loadDestination(){
-
-    if(!destination) return;
-
-    fetch("/search?q=" + destination)
-    .then(res => res.json())
+  fetch("/search?q=" + encodeURIComponent(destination))
+    .then(r => r.json())
     .then(loc => {
+      if (!loc || !loc.name) { console.warn("Location not found"); return; }
 
-        if(loc && loc.name){
+      destinationData = loc;
 
-            destinationData = loc;
+      /* Floating panel */
+      const panel = document.getElementById("floatingInfo");
+      if (panel) {
+        document.getElementById("fiTitle").textContent = loc.name;
+        document.getElementById("fiMeta").textContent  =
+          "🏢 " + loc.building + "  ·  📶 " + loc.floor;
+        panel.style.display = "block";
+      }
 
-            // Sidebar info
-            document.getElementById("destinationInfo").innerHTML =
-            "<b>Destination:</b> "+loc.name+"<br>"+
-            "<b>Building:</b> "+loc.building+"<br>"+
-            "<b>Floor:</b> "+loc.floor+"<br><br>"+
-            (loc.instructions 
-                ? "<b>Instructions:</b><br>"+loc.instructions 
-                : ""
-            );
+      /* Destination marker */
+      const popup =
+        "<b>" + loc.name + "</b><br>" +
+        loc.building + " · " + loc.floor +
+        (loc.image ? "<br><img src='" + loc.image + "' style='width:140px;border-radius:8px;margin-top:8px;'>" : "") +
+        (loc.instructions ? "<br><small style='color:#94a3b8'>" + loc.instructions + "</small>" : "");
 
-            // Auto detect user location
-            locateUser();
-
-        } else {
-            console.log("No location found");
-        }
-
-    })
-    .catch(err => console.log(err));
-}
-
-
-// ---------------- UPDATE USER LOCATION ----------------
-function updateUserLocation(lat, lng){
-
-    userLocation = {lat: lat, lng: lng};
-
-    if(userMarker){
-        map.removeLayer(userMarker);
-    }
-
-    userMarker = L.marker([lat, lng])
+      destinationMark = L.marker([loc.lat, loc.lng], { icon: destIcon() })
         .addTo(map)
-        .bindPopup("📍 You are here");
-
-    drawRoute();
-}
-
-
-// ---------------- DRAW ROUTE ----------------
-function drawRoute(){
-
-    if(!destinationData || !userLocation) return;
-
-    // Remove old route
-    if(routingControl){
-        try{ map.removeControl(routingControl); }catch(e){}
-        routingControl = null;
-    }
-
-    // Remove old destination marker
-    if(destinationMarker){
-        try{ map.removeLayer(destinationMarker); }catch(e){}
-        destinationMarker = null;
-    }
-
-    // Entry point logic
-    let destLat = destinationData.entry_lat || destinationData.lat;
-    let destLng = destinationData.entry_lng || destinationData.lng;
-
-    // Popup content
-    let popupContent =
-        "<b>" + destinationData.name + "</b><br>" +
-        "Floor: " + destinationData.floor + "<br><br>" +
-        (destinationData.image 
-            ? "<img src='" + destinationData.image + "' style='width:150px; border-radius:6px;'>"
-            : ""
-        ) +
-        "<br>" +
-        (destinationData.instructions 
-            ? "<small>" + destinationData.instructions + "</small>"
-            : ""
-        );
-
-    // Destination marker
-    destinationMarker = L.marker([destinationData.lat, destinationData.lng])
-        .addTo(map)
-        .bindPopup(popupContent)
+        .bindPopup(popup)
         .openPopup();
 
-    // Routing (ONLY routing machine, no custom roads)
-    routingControl = L.Routing.control({
-        waypoints:[
-            L.latLng(userLocation.lat, userLocation.lng),
-            L.latLng(destLat, destLng)
-        ],
-        lineOptions:{
-            styles:[{color:'blue', weight:6}]
-        },
-        routeWhileDragging:false,
-        addWaypoints:false,
-        draggableWaypoints:false,
-        createMarker: () => null
-    }).addTo(map);
-
-    // Fit map view
-    setTimeout(() => {
-        try {
-            let group = L.featureGroup([userMarker, destinationMarker]);
-            map.fitBounds(group.getBounds().pad(0.3));
-        } catch(e){}
-    }, 500);
+      map.setView([loc.lat, loc.lng], 18);
+      locateUser();
+    })
+    .catch(e => console.error(e));
 }
 
+/* ---------- UPDATE USER LOCATION ---------- */
+function updateUserLocation(lat, lng) {
+  userLocation = { lat, lng };
 
-// ---------------- LOCATE USER ----------------
-function locateUser(){
+  if (userMarker) map.removeLayer(userMarker);
+  userMarker = L.marker([lat, lng], { icon: userIcon() })
+    .addTo(map)
+    .bindPopup("📍 You are here");
 
-    if(!navigator.geolocation){
-        alert("Geolocation not supported ❌");
-        return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-
-        function(position){
-            updateUserLocation(
-                position.coords.latitude,
-                position.coords.longitude
-            );
-        },
-
-        function(error){
-            alert("Enable location access ❌");
-            console.log(error);
-        }
-    );
+  drawRoute();
 }
 
+/* ---------- DRAW ROUTE ---------- */
+function drawRoute() {
+  if (!destinationData || !userLocation) return;
 
-// ---------------- BUTTON ----------------
-window.addEventListener("DOMContentLoaded", function(){
-    const btn = document.getElementById("locateBtn");
-    if(btn){
-        btn.addEventListener("click", locateUser);
-    }
-});
+  if (routingControl) {
+    try { map.removeControl(routingControl); } catch(e) {}
+    routingControl = null;
+  }
 
+  const dLat = destinationData.entry_lat || destinationData.lat;
+  const dLng = destinationData.entry_lng || destinationData.lng;
 
-// ---------------- SIDEBAR ----------------
-function toggleSidebar(){
-    document.getElementById("sidebar").classList.toggle("hidden");
+  routingControl = L.Routing.control({
+    waypoints: [
+      L.latLng(userLocation.lat, userLocation.lng),
+      L.latLng(dLat, dLng)
+    ],
+    lineOptions: {
+      styles: [{ color: "#4f46e5", weight: 5, opacity: 0.9 }]
+    },
+    routeWhileDragging: false,
+    addWaypoints:       false,
+    draggableWaypoints: false,
+    createMarker:       () => null,
+    show:               false
+  }).addTo(map);
 
-    setTimeout(() => {
-        map.invalidateSize();
-    }, 300);
+  setTimeout(() => {
+    try {
+      const group = L.featureGroup([userMarker, destinationMark]);
+      map.fitBounds(group.getBounds().pad(0.28));
+    } catch(e) {}
+  }, 600);
+}
+
+/* ---------- LOCATE USER ---------- */
+function locateUser() {
+  if (!navigator.geolocation) {
+    alert("Geolocation is not supported by your browser.");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => updateUserLocation(pos.coords.latitude, pos.coords.longitude),
+    err => console.warn("Location denied:", err)
+  );
 }
