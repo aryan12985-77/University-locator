@@ -1,8 +1,18 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, make_response
 import sqlite3
 import json
 
 app = Flask(__name__)
+
+
+# Allow iframe embedding and disable cache for Replit preview
+@app.after_request
+def set_headers(response):
+    response.headers["X-Frame-Options"] = "ALLOWALL"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 # ---------------- DATABASE CONNECTION ----------------
@@ -123,4 +133,4 @@ def sync():
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
