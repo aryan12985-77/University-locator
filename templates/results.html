@@ -6,11 +6,9 @@
 <title>{{ location.name if location else 'Not Found' }} — Campus Navigator</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<!-- Load Leaflet BEFORE inline scripts so L is always available -->
+<!-- Leaflet loaded in <head> so L is defined before any inline script runs -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
 </head>
 <body>
 
@@ -179,27 +177,31 @@ function buildSteps() {
 }
 
 /* ============ INLINE MAP ============ */
-let mapInit   = false;
-let inlineMap = null;
+let mapInit    = false;
+let inlineMap  = null;
+let iUserMark  = null;
+let iRouteLine = null;
+let iLocating  = false;
 
-/* Custom icons */
-function mkDestIcon() {
+function mkIDestIcon() {
   return L.divIcon({
     className: "",
     html: "<div style='background:linear-gradient(135deg,#4f46e5,#06b6d4);" +
           "width:34px;height:34px;border-radius:50% 50% 50% 0;" +
-          "transform:rotate(-45deg);border:3px solid white;" +
-          "box-shadow:0 4px 12px rgba(0,0,0,0.45)'></div>",
-    iconSize: [34, 34], iconAnchor: [17, 34]
+          "transform:rotate(-45deg);border:3px solid #fff;" +
+          "box-shadow:0 4px 12px rgba(79,70,229,.55)'></div>",
+    iconSize: [34,34], iconAnchor: [17,34]
   });
 }
-function mkUserIcon() {
+function mkIUserIcon() {
   return L.divIcon({
     className: "",
-    html: "<div style='width:18px;height:18px;border-radius:50%;" +
-          "background:#10b981;border:3px solid white;" +
-          "box-shadow:0 2px 8px rgba(0,0,0,0.4)'></div>",
-    iconSize: [18, 18], iconAnchor: [9, 9]
+    html: "<div style='position:relative;width:22px;height:22px'>" +
+          "<div style='position:absolute;inset:0;border-radius:50%;" +
+          "background:#10b981;border:3px solid #fff;" +
+          "box-shadow:0 0 0 0 rgba(16,185,129,.5);" +
+          "animation:gps-pulse 1.8s infinite'></div></div>",
+    iconSize: [22,22], iconAnchor: [11,11]
   });
 }
 
@@ -212,6 +214,9 @@ function toggleMap() {
     container.style.display = "none";
     btnTxt.textContent  = "Show on Map";
     btnIcon.textContent = "🗺";
+    /* Stop watching when map is hidden */
+    if (inlineMap) inlineMap.stopLocate();
+    iLocating = false;
     return;
   }
 
@@ -221,24 +226,33 @@ function toggleMap() {
 
   if (!mapInit) {
     mapInit = true;
-    /* CRITICAL: wait for browser to paint the container before Leaflet
-       measures its size — otherwise it renders at 0×0 and shows the world */
+    /* Wait one animation frame so the browser paints the container at full
+       size BEFORE Leaflet measures it — prevents the "whole world" zoom bug */
     requestAnimationFrame(() => setTimeout(initInlineMap, 80));
   } else if (inlineMap) {
-    requestAnimationFrame(() => inlineMap.invalidateSize());
+    requestAnimationFrame(() => {
+      inlineMap.invalidateSize();
+      inlineMap.setView([LOC.lat, LOC.lng], 19, { animate: false });
+    });
+    if (!iLocating) startInlineLocate();
   }
 }
 
 function initInlineMap() {
   const loading = document.getElementById("mapLoading");
 
-  /* Init with explicit center + zoom so it never falls back to zoom-0 world view */
+  /* Explicit center + zoom → never falls back to zoom-0 world view */
   inlineMap = L.map("inlineMap", {
-    center:  [LOC.lat, LOC.lng],
-    zoom:    19,
-    minZoom: 16,
-    maxZoom: 21,
-    zoomControl: true
+    center:      [LOC.lat, LOC.lng],
+    zoom:        19,
+    minZoom:     16,
+    maxZoom:     21,
+    zoomControl: true,
+    maxBounds: [
+      [LOC.lat - 0.03, LOC.lng - 0.04],
+      [LOC.lat + 0.03, LOC.lng + 0.04]
+    ],
+    maxBoundsViscosity: 0.8
   });
 
   L.tileLayer(
@@ -246,83 +260,109 @@ function initInlineMap() {
     { attribution: "© Esri", maxZoom: 21 }
   ).addTo(inlineMap);
 
+  /* Leaflet locate events */
+  inlineMap.on("locationfound", onILocFound);
+  inlineMap.on("locationerror", onILocError);
+
   /* Destination marker */
-  const destMarker = L.marker([LOC.lat, LOC.lng], { icon: mkDestIcon() })
+  const destMark = L.marker([LOC.lat, LOC.lng], { icon: mkIDestIcon() })
     .addTo(inlineMap)
-    .bindPopup(
-      "<b style='font-size:13px'>" + LOC.name + "</b><br>" +
-      "<small>" + LOC.building + " · " + LOC.floor + "</small>"
-    )
+    .bindPopup("<b>" + LOC.name + "</b><br><small>" + LOC.building + " · " + LOC.floor + "</small>")
     .openPopup();
 
-  /* Fix size after container is painted */
+  /* Fix size after browser has painted, then start GPS */
   setTimeout(() => {
     inlineMap.invalidateSize();
-    inlineMap.setView([LOC.lat, LOC.lng], 19);
-    /* Hide loading overlay */
-    loading.style.transition = "opacity 0.4s";
-    loading.style.opacity    = "0";
-    setTimeout(() => { loading.style.display = "none"; }, 400);
+    inlineMap.setView([LOC.lat, LOC.lng], 19, { animate: false });
+    loading.style.opacity = "0";
+    setTimeout(() => { loading.style.display = "none"; }, 350);
+    startInlineLocate();
   }, 300);
-
-  /* ---- Live GPS location ---- */
-  if (!navigator.geolocation) {
-    showNoGpsNote();
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      const uLat = pos.coords.latitude;
-      const uLng = pos.coords.longitude;
-
-      /* User marker with pulsing ring */
-      const userMarker = L.marker([uLat, uLng], { icon: mkUserIcon() })
-        .addTo(inlineMap)
-        .bindPopup("<b>📍 You are here</b>");
-
-      /* Draw route line */
-      const routing = L.Routing.control({
-        waypoints: [
-          L.latLng(uLat, uLng),
-          L.latLng(LOC.entry_lat, LOC.entry_lng)
-        ],
-        lineOptions: {
-          styles: [{ color: "#4f46e5", weight: 5, opacity: 0.9 }]
-        },
-        routeWhileDragging:  false,
-        addWaypoints:        false,
-        draggableWaypoints:  false,
-        createMarker:        () => null,
-        show:                false,
-        collapsible:         true,
-        collapsed:           true
-      }).addTo(inlineMap);
-
-      /* Fit both markers in view — but never zoom out below campus level */
-      routing.on("routesfound", function() {
-        const group = L.featureGroup([userMarker, destMarker]);
-        inlineMap.fitBounds(group.getBounds().pad(0.2), { maxZoom: 19 });
-      });
-    },
-    function(err) {
-      /* GPS denied or unavailable — just stay zoomed on destination */
-      console.warn("GPS:", err.message);
-      showNoGpsNote();
-    },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-  );
 }
 
-function showNoGpsNote() {
+function startInlineLocate() {
+  if (iLocating || !inlineMap) return;
+  iLocating = true;
+  inlineMap.locate({ watch: true, enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
+}
+
+function onILocFound(e) {
+  const uLat = e.latlng.lat;
+  const uLng = e.latlng.lng;
+
+  if (iUserMark) {
+    iUserMark.setLatLng(e.latlng);
+  } else {
+    iUserMark = L.marker(e.latlng, { icon: mkIUserIcon() })
+      .addTo(inlineMap)
+      .bindPopup("<b>📍 You are here</b>");
+  }
+
+  const dLat = LOC.entry_lat;
+  const dLng = LOC.entry_lng;
+
+  /* Draw / update straight dashed line — no routing machine, no zoom side effects */
+  if (iRouteLine) { inlineMap.removeLayer(iRouteLine); }
+  iRouteLine = L.polyline([[uLat, uLng], [dLat, dLng]], {
+    color: "#4f46e5", weight: 4, opacity: 0.85, dashArray: "10, 7", lineCap: "round"
+  }).addTo(inlineMap);
+
+  /* Distance + ETA */
+  const dist = haversineI(uLat, uLng, dLat, dLng);
+  const mins = Math.max(1, Math.round(dist / 80));
+  const label = dist < 1000
+    ? Math.round(dist) + "m · ~" + mins + " min walk"
+    : (dist/1000).toFixed(1) + "km · ~" + mins + " min walk";
+
+  /* Show small info badge on map */
+  updateIBadge(label);
+
+  /* Fit both in view — capped so it never zooms to country level */
+  const group = L.featureGroup([iUserMark,
+    L.circleMarker([LOC.lat, LOC.lng])]);
+  inlineMap.fitBounds(group.getBounds().pad(0.25), { maxZoom: 19, animate: true });
+}
+
+function onILocError(e) {
+  iLocating = false;
+  if (e.code === 1) {
+    showINote("📍 Allow location access for live routing");
+  }
+}
+
+let iBadgeEl = null;
+function updateIBadge(text) {
+  if (!iBadgeEl) {
+    iBadgeEl = document.createElement("div");
+    iBadgeEl.style.cssText =
+      "position:absolute;top:10px;left:50%;transform:translateX(-50%);" +
+      "background:rgba(15,23,42,0.88);color:#e2e8f0;font-size:11px;font-family:Poppins,sans-serif;" +
+      "padding:5px 14px;border-radius:20px;z-index:800;white-space:nowrap;" +
+      "box-shadow:0 2px 10px rgba(0,0,0,0.4);";
+    document.getElementById("inlineMapContainer").appendChild(iBadgeEl);
+  }
+  iBadgeEl.textContent = "🚶 " + text;
+}
+
+function showINote(msg) {
   const note = document.createElement("div");
   note.style.cssText =
     "position:absolute;bottom:10px;left:50%;transform:translateX(-50%);" +
-    "background:rgba(15,23,42,0.85);color:#94a3b8;font-size:11px;" +
-    "padding:6px 14px;border-radius:20px;z-index:1000;white-space:nowrap;";
-  note.textContent = "📍 Location access needed for live routing";
-  document.getElementById("inlineMapContainer").style.position = "relative";
-  document.getElementById("inlineMapContainer").appendChild(note);
+    "background:rgba(15,23,42,0.88);color:#94a3b8;font-size:11px;font-family:Poppins,sans-serif;" +
+    "padding:6px 14px;border-radius:20px;z-index:800;white-space:nowrap;";
+  note.textContent = msg;
+  const c = document.getElementById("inlineMapContainer");
+  c.style.position = "relative";
+  c.appendChild(note);
+}
+
+/* Haversine distance (metres) */
+function haversineI(lat1, lng1, lat2, lng2) {
+  const R  = 6371000;
+  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2-lat1)*Math.PI/180, Δλ = (lng2-lng1)*Math.PI/180;
+  const a  = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 buildSteps();

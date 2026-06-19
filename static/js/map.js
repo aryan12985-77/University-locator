@@ -1,54 +1,58 @@
 /* ============================================================
-   Campus Navigator — Full Page Map
-   VGU, Jaipur  |  Campus coords ~26.8123, 75.8935
+   Campus Navigator — Full Page Map  |  VGU, Jaipur
    ============================================================ */
 
-var userLocation    = null;
-var routingControl  = null;
-var destinationMark = null;
-var userMarker      = null;
-var destinationData = null;
-var map             = null;
-
-/* Campus center fallback */
-var CAMPUS = { lat: 26.8123, lng: 75.8935 };
+/* Campus centre (used as fallback view) */
+var CAMPUS_LAT  = 26.8123;
+var CAMPUS_LNG  = 75.8935;
 var CAMPUS_ZOOM = 18;
 
-/* ---------- CUSTOM ICONS ---------- */
+var map             = null;
+var userMarker      = null;
+var destMarker      = null;
+var routeLine       = null;
+var destinationData = null;
+var locating        = false;
+
+/* ── Icons ──────────────────────────────────────────────── */
 function mkDestIcon() {
   return L.divIcon({
     className: "",
-    html: "<div style='background:linear-gradient(135deg,#4f46e5,#06b6d4);" +
-          "width:38px;height:38px;border-radius:50% 50% 50% 0;" +
-          "transform:rotate(-45deg);border:3px solid white;" +
-          "box-shadow:0 4px 16px rgba(79,70,229,0.6)'></div>",
-    iconSize:   [38, 38],
-    iconAnchor: [19, 38]
+    html: "<div style='" +
+      "background:linear-gradient(135deg,#4f46e5,#06b6d4);" +
+      "width:38px;height:38px;border-radius:50% 50% 50% 0;" +
+      "transform:rotate(-45deg);border:3px solid #fff;" +
+      "box-shadow:0 4px 16px rgba(79,70,229,.65)'></div>",
+    iconSize: [38,38], iconAnchor: [19,38]
   });
 }
 function mkUserIcon() {
   return L.divIcon({
     className: "",
-    html: "<div style='position:relative;width:22px;height:22px'>" +
+    html: "<div style='position:relative;width:24px;height:24px'>" +
             "<div style='position:absolute;inset:0;border-radius:50%;" +
-                  "background:#10b981;border:3px solid white;" +
-                  "box-shadow:0 2px 10px rgba(16,185,129,0.7)'></div>" +
-            "<div style='position:absolute;inset:-6px;border-radius:50%;" +
-                  "border:2px solid rgba(16,185,129,0.35);animation:none'></div>" +
+              "background:#10b981;border:3px solid #fff;" +
+              "box-shadow:0 0 0 0 rgba(16,185,129,.5);" +
+              "animation:gps-pulse 1.8s infinite'></div>" +
           "</div>",
-    iconSize:   [22, 22],
-    iconAnchor: [11, 11]
+    iconSize: [24,24], iconAnchor: [12,12]
   });
 }
 
-/* ---------- MAP INIT ---------- */
+/* ── Map init ───────────────────────────────────────────── */
 window.onload = function () {
   map = L.map("map", {
-    center:  [CAMPUS.lat, CAMPUS.lng],
-    zoom:    CAMPUS_ZOOM,
-    minZoom: 15,
-    maxZoom: 21,
-    zoomControl: true
+    center:      [CAMPUS_LAT, CAMPUS_LNG],
+    zoom:        CAMPUS_ZOOM,
+    minZoom:     16,
+    maxZoom:     21,
+    zoomControl: true,
+    /* Prevent the map from wandering far from campus */
+    maxBounds: [
+      [CAMPUS_LAT - 0.03, CAMPUS_LNG - 0.04],
+      [CAMPUS_LAT + 0.03, CAMPUS_LNG + 0.04]
+    ],
+    maxBoundsViscosity: 0.8
   });
 
   L.tileLayer(
@@ -56,150 +60,195 @@ window.onload = function () {
     { attribution: "© Esri", maxZoom: 21 }
   ).addTo(map);
 
+  /* Leaflet locate events */
+  map.on("locationfound", onLocationFound);
+  map.on("locationerror", onLocationError);
+
   setTimeout(() => map.invalidateSize(), 300);
   loadDestination();
 };
 
-/* ---------- LOAD DESTINATION ---------- */
+/* ── Load destination from /search ─────────────────────── */
 function loadDestination() {
   if (!destination) return;
 
   fetch("/search?q=" + encodeURIComponent(destination))
     .then(r => r.json())
-    .then(loc => {
-      if (!loc || !loc.name) {
-        console.warn("Location not found for:", destination);
-        return;
-      }
-
+    .then(function(loc) {
+      if (!loc || !loc.name) return;
       destinationData = loc;
 
-      /* Update floating panel */
-      const panel = document.getElementById("floatingInfo");
+      /* Floating panel */
+      var panel = document.getElementById("floatingInfo");
       if (panel) {
         document.getElementById("fiTitle").textContent = loc.name;
         document.getElementById("fiMeta").textContent  =
-          "🏢 " + loc.building + "  ·  📶 " + loc.floor;
+          "🏢 " + loc.building + "  ·  " + loc.floor;
         panel.style.display = "block";
       }
 
-      /* Place destination marker */
-      const popupHtml =
+      /* Marker */
+      var popup =
         "<div style='font-family:Poppins,sans-serif;min-width:160px'>" +
-        "<b style='font-size:14px'>" + loc.name + "</b><br>" +
-        "<span style='color:#64748b;font-size:12px'>" +
-          loc.building + " &nbsp;·&nbsp; " + loc.floor +
-        "</span>" +
-        (loc.image
-          ? "<br><img src='" + loc.image +
-            "' style='width:100%;margin-top:8px;border-radius:8px;" +
-            "max-height:120px;object-fit:cover'>"
-          : "") +
-        (loc.instructions
-          ? "<p style='color:#64748b;font-size:11px;margin-top:6px'>" +
-            loc.instructions + "</p>"
-          : "") +
+        "<b>" + loc.name + "</b><br>" +
+        "<span style='color:#64748b;font-size:12px'>" + loc.building + " · " + loc.floor + "</span>" +
+        (loc.instructions ? "<br><small style='color:#94a3b8'>" + loc.instructions + "</small>" : "") +
         "</div>";
 
-      destinationMark = L.marker([loc.lat, loc.lng], { icon: mkDestIcon() })
+      destMarker = L.marker([loc.lat, loc.lng], { icon: mkDestIcon() })
         .addTo(map)
-        .bindPopup(popupHtml, { maxWidth: 220 })
+        .bindPopup(popup, { maxWidth: 220 })
         .openPopup();
 
-      /* Zoom into destination at campus level */
-      map.setView([loc.lat, loc.lng], CAMPUS_ZOOM);
+      /* Zoom into destination at building level — no fitBounds */
+      map.setView([loc.lat, loc.lng], CAMPUS_ZOOM, { animate: true });
 
-      /* Now try to get live location */
-      locateUser();
+      /* Auto-start live location */
+      startLocating();
     })
-    .catch(e => console.error("Search error:", e));
+    .catch(function(e) { console.error(e); });
 }
 
-/* ---------- UPDATE USER LOCATION ---------- */
-function updateUserLocation(lat, lng) {
-  userLocation = { lat, lng };
+/* ── Start continuous GPS watch ─────────────────────────── */
+function startLocating() {
+  if (locating) return;
+  locating = true;
+  setFabState("loading");
 
-  if (userMarker) {
-    map.removeLayer(userMarker);
-  }
-
-  userMarker = L.marker([lat, lng], { icon: mkUserIcon() })
-    .addTo(map)
-    .bindPopup(
-      "<b style='font-family:Poppins,sans-serif'>📍 You are here</b>"
-    );
-
-  drawRoute();
-}
-
-/* ---------- DRAW ROUTE ---------- */
-function drawRoute() {
-  if (!destinationData || !userLocation) return;
-
-  /* Remove old routing control cleanly */
-  if (routingControl) {
-    try { map.removeControl(routingControl); } catch(e) {}
-    routingControl = null;
-  }
-
-  const dLat = destinationData.entry_lat || destinationData.lat;
-  const dLng = destinationData.entry_lng || destinationData.lng;
-
-  routingControl = L.Routing.control({
-    waypoints: [
-      L.latLng(userLocation.lat, userLocation.lng),
-      L.latLng(dLat, dLng)
-    ],
-    lineOptions: {
-      styles: [{ color: "#4f46e5", weight: 5, opacity: 0.9 }]
-    },
-    routeWhileDragging:  false,
-    addWaypoints:        false,
-    draggableWaypoints:  false,
-    createMarker:        () => null,
-    show:                false,
-    collapsible:         true,
-    collapsed:           true
-  }).addTo(map);
-
-  /* Fit both markers but KEEP campus-level zoom (never zoom out to country) */
-  routingControl.on("routesfound", function() {
-    if (!userMarker || !destinationMark) return;
-    try {
-      const group = L.featureGroup([userMarker, destinationMark]);
-      map.fitBounds(group.getBounds().pad(0.25), { maxZoom: CAMPUS_ZOOM });
-    } catch(e) {}
+  map.locate({
+    watch:             true,   /* continuous updates */
+    enableHighAccuracy: true,
+    timeout:           15000,
+    maximumAge:        5000
   });
 }
 
-/* ---------- LOCATE USER ---------- */
 function locateUser() {
-  if (!navigator.geolocation) {
-    showMapNote("Geolocation not supported by this browser");
-    return;
+  /* Called by the FAB or "My Route" button */
+  if (!locating) {
+    startLocating();
+  } else if (userMarker) {
+    /* Already have location — just pan to user */
+    map.setView(userMarker.getLatLng(), CAMPUS_ZOOM, { animate: true });
+  } else {
+    /* Restart locate */
+    map.stopLocate();
+    locating = false;
+    startLocating();
   }
-
-  navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      updateUserLocation(pos.coords.latitude, pos.coords.longitude);
-    },
-    function(err) {
-      console.warn("GPS denied or unavailable:", err.message);
-      showMapNote("📍 Allow location access to see your route");
-    },
-    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
-  );
 }
 
-/* Small toast note on the map */
-function showMapNote(msg) {
-  const el = document.createElement("div");
+/* ── Location found ─────────────────────────────────────── */
+function onLocationFound(e) {
+  setFabState("active");
+
+  var lat = e.latlng.lat;
+  var lng = e.latlng.lng;
+
+  /* Update or create user marker */
+  if (userMarker) {
+    userMarker.setLatLng(e.latlng);
+  } else {
+    userMarker = L.marker(e.latlng, { icon: mkUserIcon() })
+      .addTo(map)
+      .bindPopup("<b>📍 You are here</b><br><small>" +
+                 (e.accuracy ? "±" + Math.round(e.accuracy) + "m accuracy" : "") +
+                 "</small>");
+  }
+
+  if (destinationData) {
+    drawCampusRoute(lat, lng,
+      destinationData.entry_lat || destinationData.lat,
+      destinationData.entry_lng || destinationData.lng);
+  }
+}
+
+/* ── Location error ─────────────────────────────────────── */
+function onLocationError(e) {
+  setFabState("idle");
+  locating = false;
+
+  var msg = e.code === 1
+    ? "Location access denied — tap the 📍 button and allow location"
+    : "Can't detect location. Try tapping 📍 again";
+  showToast(msg, 4000);
+}
+
+/* ── Draw campus route (straight line — no OSRM needed) ── */
+function drawCampusRoute(uLat, uLng, dLat, dLng) {
+  /* Remove old line */
+  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+
+  /* Dashed polyline: user → destination */
+  routeLine = L.polyline(
+    [[uLat, uLng], [dLat, dLng]],
+    {
+      color:     "#4f46e5",
+      weight:    4,
+      opacity:   0.85,
+      dashArray: "10, 8",
+      lineCap:   "round"
+    }
+  ).addTo(map);
+
+  /* Distance + walking time */
+  var dist   = haversine(uLat, uLng, dLat, dLng);
+  var mins   = Math.max(1, Math.round(dist / 80));   /* ~80 m/min walking */
+  var label  = dist < 1000
+    ? Math.round(dist) + " m  ·  ~" + mins + " min walk"
+    : (dist / 1000).toFixed(1) + " km  ·  ~" + mins + " min walk";
+
+  /* Update info panel */
+  var fiMeta = document.getElementById("fiMeta");
+  if (fiMeta && destinationData) {
+    fiMeta.textContent = "🏢 " + destinationData.building +
+                         "  ·  🚶 " + label;
+  }
+
+  /* Keep both markers visible but NEVER zoom out past CAMPUS_ZOOM.
+     Only adjust if user is on campus (within 500 m of centre). */
+  if (dist < 5000) {
+    var group = L.featureGroup([userMarker, destMarker]);
+    var bounds = group.getBounds();
+    map.fitBounds(bounds.pad(0.25), {
+      animate:  true,
+      maxZoom:  CAMPUS_ZOOM,     /* never zoom in tighter than needed */
+      minZoom:  16               /* never zoom out past campus level  */
+    });
+  }
+}
+
+/* ── Haversine distance (metres) ────────────────────────── */
+function haversine(lat1, lng1, lat2, lng2) {
+  var R  = 6371000;
+  var φ1 = lat1 * Math.PI / 180;
+  var φ2 = lat2 * Math.PI / 180;
+  var Δφ = (lat2 - lat1) * Math.PI / 180;
+  var Δλ = (lng2 - lng1) * Math.PI / 180;
+  var a  = Math.sin(Δφ/2)*Math.sin(Δφ/2) +
+           Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)*Math.sin(Δλ/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+/* ── FAB state helpers ──────────────────────────────────── */
+function setFabState(state) {
+  var fab = document.querySelector(".locate-fab");
+  if (!fab) return;
+  if (state === "loading") { fab.textContent = "⏳"; fab.style.background = "#1e293b"; }
+  else if (state === "active")  { fab.textContent = "📍"; fab.style.background = "#10b981"; }
+  else                          { fab.textContent = "📍"; fab.style.background = ""; }
+}
+
+/* ── Toast notification ─────────────────────────────────── */
+function showToast(msg, ms) {
+  var el = document.createElement("div");
   el.style.cssText =
-    "position:fixed;bottom:120px;left:50%;transform:translateX(-50%);" +
-    "background:rgba(15,23,42,0.9);color:#94a3b8;font-size:12px;" +
-    "font-family:Poppins,sans-serif;padding:8px 18px;border-radius:20px;" +
-    "z-index:2000;pointer-events:none;";
+    "position:fixed;bottom:130px;left:50%;transform:translateX(-50%);" +
+    "background:rgba(15,23,42,0.93);color:#94a3b8;font-size:12px;" +
+    "font-family:Poppins,sans-serif;padding:9px 20px;border-radius:20px;" +
+    "z-index:3000;pointer-events:none;white-space:nowrap;max-width:90vw;" +
+    "text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);";
   el.textContent = msg;
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), 4000);
+  setTimeout(function() { el.remove(); }, ms || 3000);
 }
