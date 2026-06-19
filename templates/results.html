@@ -6,7 +6,11 @@
 <title>{{ location.name if location else 'Not Found' }} — Campus Navigator</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Load Leaflet BEFORE inline scripts so L is always available -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
 </head>
 <body>
 
@@ -125,150 +129,204 @@ const LOC = {
   instructions: {{ (location.instructions or '') | tojson }}
 };
 
-/* ---- BUILD STEPS ---- */
+/* ============ BUILD STEPS ============ */
 function buildSteps() {
   const list = document.getElementById("stepsList");
   const steps = [];
 
   steps.push({
     text: "Head to <strong>" + LOC.building + "</strong> on campus",
-    sub: "Use the map below or ask campus security for directions to this building."
+    sub:  "Use the map below or ask campus security for directions to this building."
   });
 
   if (LOC.floor && LOC.floor.toLowerCase() !== "ground") {
     steps.push({
       text: "Go to the <strong>" + LOC.floor + "</strong>",
-      sub: "Take the stairs or elevator to reach the correct floor."
+      sub:  "Take the stairs or elevator to reach the correct floor."
     });
   } else {
     steps.push({
       text: "Stay on the <strong>Ground Floor</strong>",
-      sub: "The location is on the ground level — no stairs needed."
+      sub:  "The location is on the ground level — no stairs needed."
     });
   }
 
   if (LOC.instructions) {
-    const parts = LOC.instructions.split(/[.\n]+/).filter(s => s.trim().length > 3);
-    parts.forEach(p => steps.push({ text: p.trim(), sub: null }));
+    LOC.instructions.split(/[.\n]+/).filter(s => s.trim().length > 3)
+      .forEach(p => steps.push({ text: p.trim(), sub: null }));
   } else {
     steps.push({
       text: "Locate <strong>" + LOC.name + "</strong>",
-      sub: "Look for signs or ask nearby staff for assistance."
+      sub:  "Look for signs or ask nearby staff for assistance."
     });
   }
 
   steps.push({
     text: "You have arrived at <strong>" + LOC.name + "</strong> 🎉",
-    sub: "Your destination is here."
+    sub:  "Your destination is here."
   });
 
   steps.forEach((s, i) => {
-    const delay = (i * 0.08).toFixed(2);
     const li = document.createElement("li");
     li.className = "step-item";
-    li.style.animationDelay = delay + "s";
+    li.style.animationDelay = (i * 0.08).toFixed(2) + "s";
     li.innerHTML =
-      "<div class='step-num'>" + (i+1) + "</div>" +
-      "<div>" +
-        "<div class='step-text'>" + s.text + "</div>" +
-        (s.sub ? "<div class='step-sub'>" + s.sub + "</div>" : "") +
-      "</div>";
+      "<div class='step-num'>" + (i + 1) + "</div>" +
+      "<div><div class='step-text'>" + s.text + "</div>" +
+      (s.sub ? "<div class='step-sub'>" + s.sub + "</div>" : "") + "</div>";
     list.appendChild(li);
   });
 }
 
-/* ---- INLINE MAP ---- */
-let mapInit = false;
+/* ============ INLINE MAP ============ */
+let mapInit   = false;
 let inlineMap = null;
+
+/* Custom icons */
+function mkDestIcon() {
+  return L.divIcon({
+    className: "",
+    html: "<div style='background:linear-gradient(135deg,#4f46e5,#06b6d4);" +
+          "width:34px;height:34px;border-radius:50% 50% 50% 0;" +
+          "transform:rotate(-45deg);border:3px solid white;" +
+          "box-shadow:0 4px 12px rgba(0,0,0,0.45)'></div>",
+    iconSize: [34, 34], iconAnchor: [17, 34]
+  });
+}
+function mkUserIcon() {
+  return L.divIcon({
+    className: "",
+    html: "<div style='width:18px;height:18px;border-radius:50%;" +
+          "background:#10b981;border:3px solid white;" +
+          "box-shadow:0 2px 8px rgba(0,0,0,0.4)'></div>",
+    iconSize: [18, 18], iconAnchor: [9, 9]
+  });
+}
 
 function toggleMap() {
   const container = document.getElementById("inlineMapContainer");
   const btnTxt    = document.getElementById("mapBtnTxt");
   const btnIcon   = document.getElementById("mapBtnIcon");
-  const visible   = container.style.display === "block";
 
-  if (visible) {
+  if (container.style.display === "block") {
     container.style.display = "none";
-    btnTxt.textContent = "Show on Map";
+    btnTxt.textContent  = "Show on Map";
     btnIcon.textContent = "🗺";
     return;
   }
 
   container.style.display = "block";
-  btnTxt.textContent = "Hide Map";
+  btnTxt.textContent  = "Hide Map";
   btnIcon.textContent = "✕";
 
   if (!mapInit) {
     mapInit = true;
-    initInlineMap();
+    /* CRITICAL: wait for browser to paint the container before Leaflet
+       measures its size — otherwise it renders at 0×0 and shows the world */
+    requestAnimationFrame(() => setTimeout(initInlineMap, 80));
+  } else if (inlineMap) {
+    requestAnimationFrame(() => inlineMap.invalidateSize());
   }
 }
 
 function initInlineMap() {
   const loading = document.getElementById("mapLoading");
 
-  inlineMap = L.map("inlineMap", { zoomControl: true });
+  /* Init with explicit center + zoom so it never falls back to zoom-0 world view */
+  inlineMap = L.map("inlineMap", {
+    center:  [LOC.lat, LOC.lng],
+    zoom:    19,
+    minZoom: 16,
+    maxZoom: 21,
+    zoomControl: true
+  });
 
   L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    { attribution: "© Esri" }
+    { attribution: "© Esri", maxZoom: 21 }
   ).addTo(inlineMap);
 
-  inlineMap.setView([LOC.lat, LOC.lng], 18);
-
-  const destIcon = L.divIcon({
-    className: "",
-    html: "<div style='background:linear-gradient(135deg,#4f46e5,#06b6d4);width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 4px 12px rgba(0,0,0,0.4)'></div>",
-    iconSize: [36, 36],
-    iconAnchor: [18, 36]
-  });
-
-  L.marker([LOC.lat, LOC.lng], { icon: destIcon })
+  /* Destination marker */
+  const destMarker = L.marker([LOC.lat, LOC.lng], { icon: mkDestIcon() })
     .addTo(inlineMap)
-    .bindPopup("<b>" + LOC.name + "</b><br>" + LOC.building + " · " + LOC.floor)
+    .bindPopup(
+      "<b style='font-size:13px'>" + LOC.name + "</b><br>" +
+      "<small>" + LOC.building + " · " + LOC.floor + "</small>"
+    )
     .openPopup();
 
+  /* Fix size after container is painted */
   setTimeout(() => {
     inlineMap.invalidateSize();
-    loading.style.opacity = "0";
+    inlineMap.setView([LOC.lat, LOC.lng], 19);
+    /* Hide loading overlay */
+    loading.style.transition = "opacity 0.4s";
+    loading.style.opacity    = "0";
     setTimeout(() => { loading.style.display = "none"; }, 400);
-  }, 600);
+  }, 300);
 
-  /* Try GPS route */
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(pos => {
+  /* ---- Live GPS location ---- */
+  if (!navigator.geolocation) {
+    showNoGpsNote();
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
       const uLat = pos.coords.latitude;
       const uLng = pos.coords.longitude;
 
-      const userIcon = L.divIcon({
-        className: "",
-        html: "<div style='width:16px;height:16px;border-radius:50%;background:#10b981;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4)'></div>",
-        iconSize: [16,16], iconAnchor: [8,8]
-      });
-      L.marker([uLat, uLng], { icon: userIcon }).addTo(inlineMap).bindPopup("📍 You are here");
+      /* User marker with pulsing ring */
+      const userMarker = L.marker([uLat, uLng], { icon: mkUserIcon() })
+        .addTo(inlineMap)
+        .bindPopup("<b>📍 You are here</b>");
 
-      L.Routing.control({
-        waypoints: [L.latLng(uLat, uLng), L.latLng(LOC.entry_lat, LOC.entry_lng)],
-        lineOptions: { styles: [{ color: "#4f46e5", weight: 5, opacity: 0.85 }] },
-        routeWhileDragging: false,
-        addWaypoints: false,
-        draggableWaypoints: false,
-        createMarker: () => null,
-        show: false
+      /* Draw route line */
+      const routing = L.Routing.control({
+        waypoints: [
+          L.latLng(uLat, uLng),
+          L.latLng(LOC.entry_lat, LOC.entry_lng)
+        ],
+        lineOptions: {
+          styles: [{ color: "#4f46e5", weight: 5, opacity: 0.9 }]
+        },
+        routeWhileDragging:  false,
+        addWaypoints:        false,
+        draggableWaypoints:  false,
+        createMarker:        () => null,
+        show:                false,
+        collapsible:         true,
+        collapsed:           true
       }).addTo(inlineMap);
 
-      setTimeout(() => {
-        const bounds = L.latLngBounds([[uLat, uLng], [LOC.lat, LOC.lng]]);
-        inlineMap.fitBounds(bounds.pad(0.25));
-      }, 1200);
-    }, () => {});
-  }
+      /* Fit both markers in view — but never zoom out below campus level */
+      routing.on("routesfound", function() {
+        const group = L.featureGroup([userMarker, destMarker]);
+        inlineMap.fitBounds(group.getBounds().pad(0.2), { maxZoom: 19 });
+      });
+    },
+    function(err) {
+      /* GPS denied or unavailable — just stay zoomed on destination */
+      console.warn("GPS:", err.message);
+      showNoGpsNote();
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+function showNoGpsNote() {
+  const note = document.createElement("div");
+  note.style.cssText =
+    "position:absolute;bottom:10px;left:50%;transform:translateX(-50%);" +
+    "background:rgba(15,23,42,0.85);color:#94a3b8;font-size:11px;" +
+    "padding:6px 14px;border-radius:20px;z-index:1000;white-space:nowrap;";
+  note.textContent = "📍 Location access needed for live routing";
+  document.getElementById("inlineMapContainer").style.position = "relative";
+  document.getElementById("inlineMapContainer").appendChild(note);
 }
 
 buildSteps();
 </script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
 {% endif %}
 
 </body>

@@ -1,5 +1,6 @@
 /* ============================================================
-   Campus Navigator — Map Logic
+   Campus Navigator — Full Page Map
+   VGU, Jaipur  |  Campus coords ~26.8123, 75.8935
    ============================================================ */
 
 var userLocation    = null;
@@ -9,35 +10,53 @@ var userMarker      = null;
 var destinationData = null;
 var map             = null;
 
-/* ---------- ICONS ---------- */
-function destIcon() {
+/* Campus center fallback */
+var CAMPUS = { lat: 26.8123, lng: 75.8935 };
+var CAMPUS_ZOOM = 18;
+
+/* ---------- CUSTOM ICONS ---------- */
+function mkDestIcon() {
   return L.divIcon({
     className: "",
-    html: "<div style='background:linear-gradient(135deg,#4f46e5,#06b6d4);width:38px;height:38px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 4px 14px rgba(0,0,0,0.45)'></div>",
+    html: "<div style='background:linear-gradient(135deg,#4f46e5,#06b6d4);" +
+          "width:38px;height:38px;border-radius:50% 50% 50% 0;" +
+          "transform:rotate(-45deg);border:3px solid white;" +
+          "box-shadow:0 4px 16px rgba(79,70,229,0.6)'></div>",
     iconSize:   [38, 38],
     iconAnchor: [19, 38]
   });
 }
-function userIcon() {
+function mkUserIcon() {
   return L.divIcon({
     className: "",
-    html: "<div style='width:18px;height:18px;border-radius:50%;background:#10b981;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4)'></div>",
-    iconSize:   [18, 18],
-    iconAnchor: [9, 9]
+    html: "<div style='position:relative;width:22px;height:22px'>" +
+            "<div style='position:absolute;inset:0;border-radius:50%;" +
+                  "background:#10b981;border:3px solid white;" +
+                  "box-shadow:0 2px 10px rgba(16,185,129,0.7)'></div>" +
+            "<div style='position:absolute;inset:-6px;border-radius:50%;" +
+                  "border:2px solid rgba(16,185,129,0.35);animation:none'></div>" +
+          "</div>",
+    iconSize:   [22, 22],
+    iconAnchor: [11, 11]
   });
 }
 
-/* ---------- INIT ---------- */
+/* ---------- MAP INIT ---------- */
 window.onload = function () {
-  map = L.map("map", { zoomControl: true });
-  map.setView([26.8123, 75.8935], 17);
+  map = L.map("map", {
+    center:  [CAMPUS.lat, CAMPUS.lng],
+    zoom:    CAMPUS_ZOOM,
+    minZoom: 15,
+    maxZoom: 21,
+    zoomControl: true
+  });
 
   L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    { attribution: "Tiles © Esri", maxZoom: 21 }
+    { attribution: "© Esri", maxZoom: 21 }
   ).addTo(map);
 
-  setTimeout(() => map.invalidateSize(), 400);
+  setTimeout(() => map.invalidateSize(), 300);
   loadDestination();
 };
 
@@ -48,11 +67,14 @@ function loadDestination() {
   fetch("/search?q=" + encodeURIComponent(destination))
     .then(r => r.json())
     .then(loc => {
-      if (!loc || !loc.name) { console.warn("Location not found"); return; }
+      if (!loc || !loc.name) {
+        console.warn("Location not found for:", destination);
+        return;
+      }
 
       destinationData = loc;
 
-      /* Floating panel */
+      /* Update floating panel */
       const panel = document.getElementById("floatingInfo");
       if (panel) {
         document.getElementById("fiTitle").textContent = loc.name;
@@ -61,32 +83,51 @@ function loadDestination() {
         panel.style.display = "block";
       }
 
-      /* Destination marker */
-      const popup =
-        "<b>" + loc.name + "</b><br>" +
-        loc.building + " · " + loc.floor +
-        (loc.image ? "<br><img src='" + loc.image + "' style='width:140px;border-radius:8px;margin-top:8px;'>" : "") +
-        (loc.instructions ? "<br><small style='color:#94a3b8'>" + loc.instructions + "</small>" : "");
+      /* Place destination marker */
+      const popupHtml =
+        "<div style='font-family:Poppins,sans-serif;min-width:160px'>" +
+        "<b style='font-size:14px'>" + loc.name + "</b><br>" +
+        "<span style='color:#64748b;font-size:12px'>" +
+          loc.building + " &nbsp;·&nbsp; " + loc.floor +
+        "</span>" +
+        (loc.image
+          ? "<br><img src='" + loc.image +
+            "' style='width:100%;margin-top:8px;border-radius:8px;" +
+            "max-height:120px;object-fit:cover'>"
+          : "") +
+        (loc.instructions
+          ? "<p style='color:#64748b;font-size:11px;margin-top:6px'>" +
+            loc.instructions + "</p>"
+          : "") +
+        "</div>";
 
-      destinationMark = L.marker([loc.lat, loc.lng], { icon: destIcon() })
+      destinationMark = L.marker([loc.lat, loc.lng], { icon: mkDestIcon() })
         .addTo(map)
-        .bindPopup(popup)
+        .bindPopup(popupHtml, { maxWidth: 220 })
         .openPopup();
 
-      map.setView([loc.lat, loc.lng], 18);
+      /* Zoom into destination at campus level */
+      map.setView([loc.lat, loc.lng], CAMPUS_ZOOM);
+
+      /* Now try to get live location */
       locateUser();
     })
-    .catch(e => console.error(e));
+    .catch(e => console.error("Search error:", e));
 }
 
 /* ---------- UPDATE USER LOCATION ---------- */
 function updateUserLocation(lat, lng) {
   userLocation = { lat, lng };
 
-  if (userMarker) map.removeLayer(userMarker);
-  userMarker = L.marker([lat, lng], { icon: userIcon() })
+  if (userMarker) {
+    map.removeLayer(userMarker);
+  }
+
+  userMarker = L.marker([lat, lng], { icon: mkUserIcon() })
     .addTo(map)
-    .bindPopup("📍 You are here");
+    .bindPopup(
+      "<b style='font-family:Poppins,sans-serif'>📍 You are here</b>"
+    );
 
   drawRoute();
 }
@@ -95,6 +136,7 @@ function updateUserLocation(lat, lng) {
 function drawRoute() {
   if (!destinationData || !userLocation) return;
 
+  /* Remove old routing control cleanly */
   if (routingControl) {
     try { map.removeControl(routingControl); } catch(e) {}
     routingControl = null;
@@ -111,29 +153,53 @@ function drawRoute() {
     lineOptions: {
       styles: [{ color: "#4f46e5", weight: 5, opacity: 0.9 }]
     },
-    routeWhileDragging: false,
-    addWaypoints:       false,
-    draggableWaypoints: false,
-    createMarker:       () => null,
-    show:               false
+    routeWhileDragging:  false,
+    addWaypoints:        false,
+    draggableWaypoints:  false,
+    createMarker:        () => null,
+    show:                false,
+    collapsible:         true,
+    collapsed:           true
   }).addTo(map);
 
-  setTimeout(() => {
+  /* Fit both markers but KEEP campus-level zoom (never zoom out to country) */
+  routingControl.on("routesfound", function() {
+    if (!userMarker || !destinationMark) return;
     try {
       const group = L.featureGroup([userMarker, destinationMark]);
-      map.fitBounds(group.getBounds().pad(0.28));
+      map.fitBounds(group.getBounds().pad(0.25), { maxZoom: CAMPUS_ZOOM });
     } catch(e) {}
-  }, 600);
+  });
 }
 
 /* ---------- LOCATE USER ---------- */
 function locateUser() {
   if (!navigator.geolocation) {
-    alert("Geolocation is not supported by your browser.");
+    showMapNote("Geolocation not supported by this browser");
     return;
   }
+
   navigator.geolocation.getCurrentPosition(
-    pos => updateUserLocation(pos.coords.latitude, pos.coords.longitude),
-    err => console.warn("Location denied:", err)
+    function(pos) {
+      updateUserLocation(pos.coords.latitude, pos.coords.longitude);
+    },
+    function(err) {
+      console.warn("GPS denied or unavailable:", err.message);
+      showMapNote("📍 Allow location access to see your route");
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
   );
+}
+
+/* Small toast note on the map */
+function showMapNote(msg) {
+  const el = document.createElement("div");
+  el.style.cssText =
+    "position:fixed;bottom:120px;left:50%;transform:translateX(-50%);" +
+    "background:rgba(15,23,42,0.9);color:#94a3b8;font-size:12px;" +
+    "font-family:Poppins,sans-serif;padding:8px 18px;border-radius:20px;" +
+    "z-index:2000;pointer-events:none;";
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
 }
