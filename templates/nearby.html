@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Near Me — Campus Navigator</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="nearby-page">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <a class="logo" href="/">
+      <div class="logo-icon">🧭</div>
+      <span>Campus Navigator</span>
+    </a>
+    <a href="/" class="btn-secondary" style="padding:8px 16px;font-size:0.78rem;border-radius:50px;">← Home</a>
+  </div>
+
+  <!-- HERO ROW -->
+  <div class="nearby-hero">
+    <div>
+      <h2 class="nearby-title">📍 Near Me</h2>
+      <div class="nearby-sub" id="gpsStatus">Detecting your location...</div>
+    </div>
+    <button class="refresh-btn" onclick="refreshLocation()" title="Refresh location">🔄</button>
+  </div>
+
+  <!-- CATEGORY FILTERS -->
+  <div class="nearby-filters" id="filterRow">
+    <button class="filter-chip active" data-cat="all"    onclick="setFilter('all')">All</button>
+    <button class="filter-chip" data-cat="academic" onclick="setFilter('academic')">🏫 Academic</button>
+    <button class="filter-chip" data-cat="sports"   onclick="setFilter('sports')">⚽ Sports</button>
+    <button class="filter-chip" data-cat="food"     onclick="setFilter('food')">🍽 Food</button>
+    <button class="filter-chip" data-cat="hostel"   onclick="setFilter('hostel')">🏠 Hostel</button>
+    <button class="filter-chip" data-cat="gates"    onclick="setFilter('gates')">🚪 Gates</button>
+    <button class="filter-chip" data-cat="other"    onclick="setFilter('other')">📌 Other</button>
+  </div>
+
+  <!-- GPS LOADING STATE -->
+  <div class="nearby-loading" id="nearbyLoading">
+    <div class="nb-spinner"></div>
+    <p>Finding your location…</p>
+    <small>Allow location access when your browser asks</small>
+  </div>
+
+  <!-- GPS ERROR STATE -->
+  <div class="nearby-error" id="nearbyError" style="display:none">
+    <div style="font-size:2.5rem;margin-bottom:12px">📵</div>
+    <h3>Location Access Needed</h3>
+    <p>Allow location permission to see places near you.</p>
+    <button class="btn-primary" onclick="refreshLocation()" style="margin-top:16px">Try Again</button>
+  </div>
+
+  <!-- RESULTS LIST -->
+  <div class="nearby-list" id="nearbyList" style="display:none"></div>
+
+  <!-- EMPTY STATE -->
+  <div class="nearby-empty" id="nearbyEmpty" style="display:none">
+    <div style="font-size:2.5rem;margin-bottom:12px">🔍</div>
+    <h3>Nothing nearby</h3>
+    <p>No locations found in this category.</p>
+  </div>
+
+</div>
+
+<script>
+let allLocations = [];
+let userLat = null, userLng = null;
+let activeFilter = 'all';
+let watchId = null;
+
+/* ── Category classifier ───────────────────────── */
+function getCategory(loc) {
+  const n = (loc.name + ' ' + loc.building).toLowerCase();
+  if (/cricket|football|basketball|sports|lawn|ground|gym|court/.test(n)) return 'sports';
+  if (/mess|canteen|food|cafe|restaurant|dining/.test(n))                  return 'food';
+  if (/hostel|shingar|narayana|girls|pg|room/.test(n))                     return 'hostel';
+  if (/gate|security|entrance|exit/.test(n))                               return 'gates';
+  if (/academic|cse|tech|lab|department|library|auditorium|class|lecture|building|block/.test(n)) return 'academic';
+  return 'other';
+}
+
+/* ── Category icon ─────────────────────────────── */
+function catIcon(cat) {
+  return { academic:'🏫', sports:'⚽', food:'🍽', hostel:'🏠', gates:'🚪', other:'📌' }[cat] || '📍';
+}
+
+/* ── Haversine distance (metres) ───────────────── */
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const φ1 = lat1*Math.PI/180, φ2 = lat2*Math.PI/180;
+  const Δφ = (lat2-lat1)*Math.PI/180, Δλ = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+/* ── Format distance label ─────────────────────── */
+function fmtDist(m) {
+  return m < 1000 ? Math.round(m) + 'm' : (m/1000).toFixed(1) + 'km';
+}
+function fmtTime(m) {
+  const mins = Math.max(1, Math.round(m/80));
+  return '~' + mins + ' min';
+}
+
+/* ── Set active filter ─────────────────────────── */
+function setFilter(cat) {
+  activeFilter = cat;
+  document.querySelectorAll('.filter-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.cat === cat);
+  });
+  renderList();
+}
+
+/* ── Render the sorted list ────────────────────── */
+function renderList() {
+  const list  = document.getElementById('nearbyList');
+  const empty = document.getElementById('nearbyEmpty');
+
+  /* Filter by category */
+  let items = allLocations.filter(loc =>
+    activeFilter === 'all' || getCategory(loc) === activeFilter
+  );
+
+  if (items.length === 0) {
+    list.style.display  = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  list.style.display  = 'block';
+
+  list.innerHTML = items.map((loc, i) => {
+    const dist  = loc._dist;
+    const cat   = getCategory(loc);
+    const delay = (i * 0.04).toFixed(2);
+    const distBadgeClass = dist < 100 ? 'badge-green' : dist < 300 ? 'badge-blue' : 'badge-gray';
+
+    return `
+    <div class="nb-card glass" style="animation-delay:${delay}s"
+         onclick="window.location='/directions?q=${encodeURIComponent(loc.name)}'">
+      <div class="nb-icon">${catIcon(cat)}</div>
+      <div class="nb-info">
+        <div class="nb-name">${loc.name}</div>
+        <div class="nb-meta">${loc.building} · ${loc.floor}</div>
+      </div>
+      <div class="nb-dist-col">
+        <div class="nb-dist-badge ${distBadgeClass}">${fmtDist(dist)}</div>
+        <div class="nb-walk">${fmtTime(dist)}</div>
+      </div>
+      <div class="nb-arrow">›</div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Process locations with distances ──────────── */
+function processLocations(lat, lng) {
+  allLocations = allLocations
+    .map(loc => ({ ...loc, _dist: haversine(lat, lng, loc.lat, loc.lng) }))
+    .sort((a, b) => a._dist - b._dist);
+
+  document.getElementById('nearbyLoading').style.display = 'none';
+  document.getElementById('nearbyError').style.display   = 'none';
+  document.getElementById('gpsStatus').textContent =
+    'Showing ' + allLocations.length + ' locations · sorted by distance';
+
+  renderList();
+}
+
+/* ── GPS success ───────────────────────────────── */
+function onGPS(pos) {
+  userLat = pos.coords.latitude;
+  userLng = pos.coords.longitude;
+  processLocations(userLat, userLng);
+}
+
+/* ── GPS error ─────────────────────────────────── */
+function onGPSError(err) {
+  document.getElementById('nearbyLoading').style.display = 'none';
+  document.getElementById('nearbyError').style.display   = 'block';
+  document.getElementById('gpsStatus').textContent = 'Location unavailable';
+}
+
+/* ── Refresh ───────────────────────────────────── */
+function refreshLocation() {
+  document.getElementById('nearbyLoading').style.display = 'flex';
+  document.getElementById('nearbyError').style.display   = 'none';
+  document.getElementById('nearbyList').style.display    = 'none';
+  document.getElementById('gpsStatus').textContent       = 'Detecting your location…';
+  startGPS();
+}
+
+/* ── Start GPS ─────────────────────────────────── */
+function startGPS() {
+  if (!navigator.geolocation) { onGPSError(); return; }
+  navigator.geolocation.getCurrentPosition(onGPS, onGPSError, {
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 10000
+  });
+}
+
+/* ── Boot ──────────────────────────────────────── */
+fetch('/api/locations')
+  .then(r => r.json())
+  .then(data => {
+    allLocations = data;
+    startGPS();
+  })
+  .catch(() => onGPSError());
+</script>
+
+</body>
+</html>

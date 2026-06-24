@@ -124,6 +124,23 @@ def sync_json_to_db():
     print("JSON synced to DB")
 
 
+# ---------------- NEARBY PAGE ----------------
+@app.route("/nearby")
+def nearby():
+    return render_template("nearby.html")
+
+
+# ---------------- ALL LOCATIONS API ----------------
+@app.route("/api/locations")
+def all_locations():
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT name, building, floor, lat, lng, type, instructions FROM locations"
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
 # ---------------- SYNC ROUTE ----------------
 @app.route("/sync")
 def sync():
