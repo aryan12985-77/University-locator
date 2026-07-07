@@ -200,29 +200,66 @@ body {
 .search-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 6px 6px 18px;
+  gap: 6px;
+  padding: 5px 6px 5px 5px;
   border-radius: 50px;
   animation: pulse 3.5s infinite;
   width: 100%;
+  overflow: hidden;
 }
-.search-card .s-icon {
-  color: var(--text-muted);
-  font-size: 1rem;
+
+/* ── Man wrapper inside search box ── */
+.sm-box-wrap {
   flex-shrink: 0;
+  width: 52px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 40px 0 0 40px;
+  position: relative;
 }
-.search-card input {
+#smCanvas { display: block; }
+
+/* ── Input area with custom placeholder ── */
+.search-input-wrap {
   flex: 1;
+  position: relative;
+  min-width: 0;
+}
+.s-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  color: rgba(255,255,255,0.25);
+  font-size: 0.93rem;
+  font-family: 'Poppins', sans-serif;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.s-placeholder.hidden {
+  opacity: 0;
+  transform: translateY(-3px);
+}
+
+.search-card input {
+  width: 100%;
   background: transparent;
   border: none;
   outline: none;
   color: var(--text-main);
-  font-size: 0.98rem;
+  font-size: 0.93rem;
   font-family: 'Poppins', sans-serif;
-  padding: 10px 0;
+  padding: 12px 0;
   min-width: 0;
+  caret-color: #67e8f9;
 }
-.search-card input::placeholder { color: var(--text-muted); }
+.search-card input::placeholder { color: transparent; }
 .search-card .search-btn {
   background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
