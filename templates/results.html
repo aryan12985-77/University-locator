@@ -15,6 +15,13 @@
 
 <div class="orb orb-1"></div>
 <div class="orb orb-2"></div>
+<div class="map-grid-bg"></div>
+
+<!-- confetti overlay -->
+<canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+
+<!-- mini entrance runner -->
+<canvas id="entryRunnerCanvas" class="entry-runner-canvas"></canvas>
 
 <div class="results-page">
 
@@ -42,6 +49,15 @@
   </div>
 
   <div class="results-body">
+
+    <!-- JOURNEY PROGRESS BAR -->
+    <div class="journey-bar-wrap" id="journeyBarWrap" style="display:none">
+      <div class="journey-bar-track">
+        <div class="journey-bar-fill" id="journeyBarFill"></div>
+        <div class="journey-bar-walker" id="journeyBarWalker">🚶</div>
+      </div>
+      <div class="journey-bar-label" id="journeyBarLabel">Step 1 of 4</div>
+    </div>
 
     <!-- BACK -->
     <button class="back-btn" onclick="history.back()">
@@ -388,6 +404,140 @@ function haversineI(lat1, lng1, lat2, lng2) {
 }
 
 buildSteps();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════
+   JOURNEY PROGRESS BAR
+═══════════════════════════════════════════════ */
+function setupJourneyBar() {
+  const items = document.querySelectorAll('.step-item');
+  if (!items.length) return;
+  const total = items.length;
+  const wrap  = document.getElementById('journeyBarWrap');
+  const fill  = document.getElementById('journeyBarFill');
+  const walker = document.getElementById('journeyBarWalker');
+  const label = document.getElementById('journeyBarLabel');
+  wrap.style.display = 'block';
+  label.textContent  = 'Step 1 of ' + total;
+
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const idx = +entry.target.dataset.stepIdx + 1;
+      const pct = Math.round((idx / total) * 100);
+      fill.style.width   = pct + '%';
+      walker.style.left  = 'calc(' + pct + '% - 12px)';
+      label.textContent  = 'Step ' + idx + ' of ' + total;
+      if (idx === total) {
+        setTimeout(launchConfetti, 400);
+        label.textContent = '🎉 You Arrived!';
+        label.style.color = '#10b981';
+      }
+    });
+  }, { threshold: 0.6 });
+
+  items.forEach((el, i) => {
+    el.dataset.stepIdx = i;
+    obs.observe(el);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   CONFETTI BURST
+═══════════════════════════════════════════════ */
+function launchConfetti() {
+  const cv  = document.getElementById('confettiCanvas');
+  const ctx = cv.getContext('2d');
+  cv.width  = window.innerWidth;
+  cv.height = window.innerHeight;
+  cv.style.display = 'block';
+
+  const COLORS = ['#4f46e5','#06b6d4','#10b981','#f59e0b','#ef4444','#818cf8','#67e8f9','#a78bfa'];
+  const pieces = Array.from({ length: 90 }, () => ({
+    x:    Math.random() * cv.width,
+    y:    -10 - Math.random() * 100,
+    w:    Math.random() * 11 + 5,
+    h:    Math.random() * 7  + 3,
+    rot:  Math.random() * Math.PI * 2,
+    rv:   (Math.random() - 0.5) * 0.12,
+    vx:   (Math.random() - 0.5) * 3,
+    vy:   Math.random() * 4 + 2,
+    col:  COLORS[Math.floor(Math.random() * COLORS.length)]
+  }));
+
+  let fr = 0;
+  (function loop() {
+    fr++;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    let alive = false;
+    pieces.forEach(p => {
+      p.x  += p.vx; p.y += p.vy; p.rot += p.rv;
+      p.vy += 0.07; /* gravity */
+      if (p.y < cv.height) alive = true;
+      ctx.save();
+      ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.col;
+      ctx.globalAlpha = Math.max(0, 1 - fr / 180);
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    });
+    if (alive && fr < 200) requestAnimationFrame(loop);
+    else { ctx.clearRect(0, 0, cv.width, cv.height); cv.style.display = 'none'; }
+  })();
+}
+
+/* ═══════════════════════════════════════════════
+   MINI ENTRANCE RUNNER (runs across top on load)
+═══════════════════════════════════════════════ */
+function runEntryRunner() {
+  const cv  = document.getElementById('entryRunnerCanvas');
+  const ctx = cv.getContext('2d');
+  cv.width  = window.innerWidth;
+  cv.height = 60;
+  cv.style.display = 'block';
+
+  let rx = -40, rf = 0;
+  (function loop() {
+    rf++; rx += 7;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (rx > cv.width + 40) { cv.style.display = 'none'; return; }
+
+    const sw  = Math.sin(rf * 0.32) * 0.5;
+    const bob = Math.abs(Math.sin(rf * 0.32)) * 2;
+    const cy  = 42 - bob;
+
+    ctx.save();
+    ctx.translate(rx, cy);
+    ctx.strokeStyle = '#a5b4fc'; ctx.fillStyle = '#a5b4fc'; ctx.lineCap = 'round';
+
+    ctx.lineWidth = 2;
+    ctx.save(); ctx.translate(0,8); ctx.rotate(sw);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-3,14); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.translate(0,8); ctx.rotate(-sw);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(3,14); ctx.stroke(); ctx.restore();
+
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.moveTo(0,-14); ctx.lineTo(0,8); ctx.stroke();
+
+    ctx.lineWidth = 1.8;
+    ctx.save(); ctx.translate(0,-4); ctx.rotate(sw);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(9,8); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.translate(0,-4); ctx.rotate(-sw);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-9,8); ctx.stroke(); ctx.restore();
+
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,-20,6,0,Math.PI*2); ctx.stroke();
+
+    ctx.restore();
+    requestAnimationFrame(loop);
+  })();
+}
+
+/* boot */
+setupJourneyBar();
+runEntryRunner();
 </script>
 {% endif %}
 

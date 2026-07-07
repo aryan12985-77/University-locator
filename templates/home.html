@@ -10,23 +10,15 @@
 </head>
 <body>
 
-<!-- AMBIENT ORBS -->
 <div class="orb orb-1"></div>
 <div class="orb orb-2"></div>
 <div class="orb orb-3"></div>
-
-<!-- CAMPUS MAP GRID (themed background) -->
 <div class="map-grid-bg"></div>
-
-<!-- FLOATING CAMPUS ICONS -->
 <div class="float-icons" id="floatIcons"></div>
-
-<!-- WALKER CANVAS -->
 <canvas id="walkerCanvas" class="walker-canvas"></canvas>
 
 <div class="home-page">
 
-  <!-- TOP BAR -->
   <div class="top-bar a1">
     <a class="logo" href="/">
       <div class="logo-icon-wrap">
@@ -50,26 +42,29 @@
     <div class="vgu-badge">VGU, JAIPUR</div>
   </div>
 
-  <!-- HERO -->
   <div class="hero">
 
-    <div class="hero-badge a1">
-      <span class="badge-dot"></span>
-      🎓 Smart Campus Guide
-    </div>
+    <div class="hero-badge a1"><span class="badge-dot"></span>🎓 Smart Campus Guide</div>
 
     <h1 class="a2 hero-gradient-text">Find Any Place<br>On Campus</h1>
 
     <p class="a3">Search for classrooms, offices, labs, canteen and more — get step-by-step directions instantly.</p>
 
-    <!-- SEARCH -->
+    <!-- SEARCH + SLEEPING MAN -->
     <div class="search-outer a4">
+
+      <!-- Sleeping student on top of search card -->
+      <div class="search-man-scene" id="smScene">
+        <canvas id="smCanvas" width="54" height="66"></canvas>
+        <span class="sm-zzz" id="smZzz">z z z</span>
+      </div>
+
       <div class="search-card glass" id="searchCard">
         <span class="s-icon" id="searchIcon">🔍</span>
         <input
           type="text"
           id="homeSearch"
-          placeholder="Search a place, building, or lab..."
+          placeholder="Where do you want to go?"
           autocomplete="off"
           autocorrect="off"
           spellcheck="false"
@@ -80,9 +75,11 @@
         </button>
       </div>
       <div id="homeSuggestions"></div>
+
+      <!-- Footstep trail -->
+      <div class="footstep-trail" id="footstepTrail"></div>
     </div>
 
-    <!-- NEAR ME BUTTON -->
     <a href="/nearby" class="near-me-btn a4">
       <span class="nm-pulse"></span>
       <span class="nm-icon">📍</span>
@@ -93,7 +90,6 @@
       <span class="nm-arrow">›</span>
     </a>
 
-    <!-- CATEGORY CHIPS -->
     <div class="categories a5">
       <div class="cat-chip" onclick="quickSearch('Cricket Ground')">⚽ Sports</div>
       <div class="cat-chip" onclick="quickSearch('Canteen')">🍽 Canteen</div>
@@ -103,243 +99,282 @@
       <div class="cat-chip" onclick="quickSearch('Parking')">🚗 Parking</div>
     </div>
 
-    <!-- STATS -->
     <div class="stats-bar a5">
-      <div class="stat">
-        <div class="num count-up" data-target="25">0</div>
-        <div class="lbl">Locations</div>
-      </div>
-      <div class="stat">
-        <div class="num count-up" data-target="10">0</div>
-        <div class="lbl">Buildings</div>
-      </div>
-      <div class="stat">
-        <div class="num">Live</div>
-        <div class="lbl">GPS Routing</div>
-      </div>
+      <div class="stat"><div class="num count-up" data-target="25">0</div><div class="lbl">Locations</div></div>
+      <div class="stat"><div class="num count-up" data-target="10">0</div><div class="lbl">Buildings</div></div>
+      <div class="stat"><div class="num">Live</div><div class="lbl">GPS Routing</div></div>
     </div>
 
   </div>
 
-  <!-- FOOTER -->
-  <div class="site-footer">
-    © 2026 Aryan Kumar &nbsp;·&nbsp; Campus Navigator VGU Jaipur
-  </div>
-
+  <div class="site-footer">© 2026 Aryan Kumar &nbsp;·&nbsp; Campus Navigator VGU Jaipur</div>
 </div>
 
 <script>
-/* ═══════════════════════════════════════
-   FLOATING CAMPUS ICONS (themed)
-═══════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   FLOATING CAMPUS ICONS
+═══════════════════════════════════════════════════════ */
 (function () {
   const wrap = document.getElementById('floatIcons');
-  const icons = ['📍','🗺','📌','🧭','📐','🏫','📍','🗺','📌'];
-  icons.forEach((ic, i) => {
+  ['📍','🗺','📌','🧭','📐','🏫','📍','🗺','📌'].forEach((ic) => {
     const el = document.createElement('div');
     el.className = 'float-ic';
-    const x   = 5 + Math.random() * 90;
-    const y   = 5 + Math.random() * 90;
-    const dur = 14 + Math.random() * 12;
-    const del = Math.random() * 10;
     el.style.cssText =
-      `left:${x}%;top:${y}%;` +
-      `animation-duration:${dur}s;animation-delay:${del}s;` +
-      `font-size:${10 + Math.random() * 10}px;`;
+      `left:${5+Math.random()*90}%;top:${5+Math.random()*90}%;` +
+      `animation-duration:${14+Math.random()*12}s;animation-delay:${Math.random()*10}s;` +
+      `font-size:${10+Math.random()*10}px;`;
     el.textContent = ic;
     wrap.appendChild(el);
   });
 })();
 
-/* ═══════════════════════════════════════
-   COUNT-UP STATS
-═══════════════════════════════════════ */
-function countUp(el) {
-  const target = +el.dataset.target;
-  let cur = 0;
-  const step = Math.max(1, Math.floor(target / 30));
-  const timer = setInterval(() => {
-    cur = Math.min(cur + step, target);
-    el.textContent = cur + '+';
-    if (cur >= target) clearInterval(timer);
-  }, 50);
-}
-setTimeout(() => document.querySelectorAll('.count-up').forEach(countUp), 600);
+/* ═══════════════════════════════════════════════════════
+   SLEEPING MAN ON SEARCH BOX
+═══════════════════════════════════════════════════════ */
+const smCanvas = document.getElementById('smCanvas');
+const smCtx    = smCanvas.getContext('2d');
+const smZzz    = document.getElementById('smZzz');
+let smState    = 'sleep'; // sleep | wake | stand | type
+let smFrame    = 0;
+let smAnim     = null;
 
-/* ═══════════════════════════════════════
-   WALKING BOY — canvas
-═══════════════════════════════════════ */
-const canvas = document.getElementById('walkerCanvas');
-const ctx    = canvas.getContext('2d');
-let frame    = 0;
-let boyX     = -70;
-let walkActive = false;
-let walkTarget = '';
-let animId   = null;
+function drawSearchMan(state, f) {
+  smCtx.clearRect(0, 0, 54, 66);
+  smCtx.strokeStyle = '#818cf8';
+  smCtx.fillStyle   = '#818cf8';
+  smCtx.lineCap     = 'round';
+  smCtx.lineJoin    = 'round';
 
-function resizeCanvas() {
-  canvas.width  = window.innerWidth;
-  canvas.height = 90;
+  if (state === 'sleep') {
+    /* curled up ball */
+    smCtx.lineWidth = 2.4;
+    smCtx.beginPath();
+    smCtx.arc(27, 44, 14, Math.PI * 0.15, Math.PI * 1.85);
+    smCtx.stroke();
+    smCtx.beginPath();
+    smCtx.arc(27, 28, 9, 0, Math.PI * 2);
+    smCtx.stroke();
+    /* closed eyes */
+    smCtx.lineWidth = 1.6;
+    smCtx.beginPath(); smCtx.arc(23, 27, 2.4, Math.PI, 0); smCtx.stroke();
+    smCtx.beginPath(); smCtx.arc(31, 27, 2.4, Math.PI, 0); smCtx.stroke();
+    smZzz.style.opacity = '1';
+
+  } else if (state === 'wake') {
+    smZzz.style.opacity = '0';
+    const t   = Math.min(f / 20, 1);
+    const hY  = 28 - 18 * t;
+    smCtx.lineWidth = 2.2;
+    smCtx.beginPath(); smCtx.arc(27, hY, 9, 0, Math.PI * 2); smCtx.stroke();
+    smCtx.lineWidth = 1.6;
+    if (t < 0.5) {
+      smCtx.beginPath(); smCtx.arc(23, hY - 1, 2.4, Math.PI, 0); smCtx.stroke();
+      smCtx.beginPath(); smCtx.arc(31, hY - 1, 2.4, Math.PI, 0); smCtx.stroke();
+    } else {
+      smCtx.beginPath(); smCtx.arc(23, hY - 1, 1.8, 0, Math.PI * 2); smCtx.fill();
+      smCtx.beginPath(); smCtx.arc(31, hY - 1, 1.8, 0, Math.PI * 2); smCtx.fill();
+    }
+    smCtx.lineWidth = 2.2;
+    smCtx.beginPath(); smCtx.moveTo(27, hY + 9); smCtx.lineTo(27, hY + 9 + 22 * t); smCtx.stroke();
+    if (t > 0.4) {
+      const at = (t - 0.4) / 0.6;
+      smCtx.beginPath(); smCtx.moveTo(27, hY + 17); smCtx.lineTo(27 - 14 * at, hY + 10 - 8 * at); smCtx.stroke();
+      smCtx.beginPath(); smCtx.moveTo(27, hY + 17); smCtx.lineTo(27 + 14 * at, hY + 10 - 8 * at); smCtx.stroke();
+    }
+
+  } else { /* stand | type */
+    smZzz.style.opacity = '0';
+    const sw  = state === 'type' ? Math.sin(f * 0.27) * 0.5  : 0;
+    const bob = state === 'type' ? Math.abs(Math.sin(f * 0.27)) * 2.5 : 0;
+    const hY  = 10 + bob;
+
+    /* graduation cap */
+    smCtx.fillStyle   = '#3730a3';
+    smCtx.strokeStyle = '#3730a3';
+    smCtx.lineWidth   = 1.5;
+    smCtx.beginPath();
+    smCtx.moveTo(27, hY - 7); smCtx.lineTo(17, hY - 2); smCtx.lineTo(37, hY - 2); smCtx.closePath();
+    smCtx.fill();
+    smCtx.fillRect(19, hY - 2, 16, 3);
+    smCtx.strokeStyle = '#06b6d4'; smCtx.lineWidth = 1.5;
+    smCtx.beginPath(); smCtx.moveTo(34, hY + 1); smCtx.lineTo(38, hY + 7); smCtx.stroke();
+
+    /* head */
+    smCtx.strokeStyle = '#818cf8'; smCtx.lineWidth = 2.2;
+    smCtx.beginPath(); smCtx.arc(27, hY + 9, 8, 0, Math.PI * 2); smCtx.stroke();
+
+    /* eyes */
+    smCtx.fillStyle = '#818cf8';
+    smCtx.beginPath(); smCtx.arc(24, hY + 8, 1.5, 0, Math.PI * 2); smCtx.fill();
+    smCtx.beginPath(); smCtx.arc(30, hY + 8, 1.5, 0, Math.PI * 2); smCtx.fill();
+
+    /* smile */
+    smCtx.lineWidth = 1.6;
+    smCtx.beginPath(); smCtx.arc(27, hY + 11, 3.5, 0.3, Math.PI - 0.3); smCtx.stroke();
+
+    /* body */
+    smCtx.strokeStyle = '#818cf8'; smCtx.lineWidth = 2.5;
+    smCtx.beginPath(); smCtx.moveTo(27, hY + 17); smCtx.lineTo(27, hY + 35); smCtx.stroke();
+
+    /* arms */
+    smCtx.lineWidth = 2.2;
+    smCtx.beginPath(); smCtx.moveTo(27, hY + 24); smCtx.lineTo(27 - 12 * Math.cos(sw * 0.7), hY + 24 + 10 * Math.sin(sw)); smCtx.stroke();
+    smCtx.beginPath(); smCtx.moveTo(27, hY + 24); smCtx.lineTo(27 + 12 * Math.cos(sw * 0.7), hY + 24 - 10 * Math.sin(sw)); smCtx.stroke();
+
+    /* legs */
+    smCtx.beginPath(); smCtx.moveTo(27, hY + 35); smCtx.lineTo(27 - 9 * Math.sin(sw), hY + 50); smCtx.stroke();
+    smCtx.beginPath(); smCtx.moveTo(27, hY + 35); smCtx.lineTo(27 + 9 * Math.sin(sw), hY + 50); smCtx.stroke();
+  }
 }
+
+function smLoop() {
+  smFrame++;
+  drawSearchMan(smState, smFrame);
+  requestAnimationFrame(smLoop);
+}
+smLoop();
+
+function setSmState(s) {
+  if (smState === s) return;
+  smState = s;
+  smFrame = 0;
+  if (s === 'wake') {
+    setTimeout(() => { if (smState === 'wake') setSmState('stand'); }, 700);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   FOOTSTEP TRAIL
+═══════════════════════════════════════════════════════ */
+const ftTrail = document.getElementById('footstepTrail');
+const STEPS   = ['👣'];
+let lastLen   = 0;
+
+function updateFootsteps(text) {
+  const len = text.length;
+  if (len > lastLen) {
+    for (let i = lastLen; i < len; i++) {
+      if (ftTrail.children.length < 30) {
+        const sp = document.createElement('span');
+        sp.className = 'footstep';
+        sp.textContent = '👣';
+        sp.style.transform = i % 2 === 0 ? 'scaleX(-1)' : 'scaleX(1)';
+        ftTrail.appendChild(sp);
+      }
+    }
+  } else if (len < lastLen) {
+    for (let i = lastLen; i > len && ftTrail.lastChild; i--) {
+      ftTrail.removeChild(ftTrail.lastChild);
+    }
+  }
+  lastLen = len;
+}
+
+/* ═══════════════════════════════════════════════════════
+   BIG WALKER CANVAS (search submit)
+═══════════════════════════════════════════════════════ */
+const wCanvas = document.getElementById('walkerCanvas');
+const wCtx    = wCanvas.getContext('2d');
+let wFrame    = 0;
+let wX        = -70;
+let wActive   = false;
+let wTarget   = '';
+let wAnimId   = null;
+
+function resizeCanvas() { wCanvas.width = window.innerWidth; wCanvas.height = 90; }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-/* safe rounded rect — no reliance on ctx.roundRect */
-function drawRounded(x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y,     x + w, y + r,     r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-  ctx.lineTo(x + r, y + h);
-  ctx.arcTo(x,     y + h, x,       y + h - r, r);
-  ctx.lineTo(x,     y + r);
-  ctx.arcTo(x,     y,     x + r,   y,         r);
-  ctx.closePath();
+function drawRounded(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y);
+  c.arcTo(x + w, y,   x + w, y + r,   r);
+  c.lineTo(x + w, y + h - r);
+  c.arcTo(x + w, y + h, x + w - r, y + h, r);
+  c.lineTo(x + r, y + h);
+  c.arcTo(x, y + h, x, y + h - r, r);
+  c.lineTo(x, y + r);
+  c.arcTo(x, y,   x + r, y,   r);
+  c.closePath();
 }
 
-function drawBoy(x, f) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (x < -70 || x > canvas.width + 70) return;
-
-  const swing  = Math.sin(f * 0.25) * 0.52;
-  const bobY   = Math.abs(Math.sin(f * 0.25)) * 4;
-  const cy     = 56 - bobY;
-
-  ctx.save();
-  ctx.translate(x, cy);
-
+function drawWalker(x, f) {
+  wCtx.clearRect(0, 0, wCanvas.width, wCanvas.height);
+  if (x < -70 || x > wCanvas.width + 70) return;
+  const sw  = Math.sin(f * 0.25) * 0.52;
+  const bob = Math.abs(Math.sin(f * 0.25)) * 4;
+  const cy  = 56 - bob;
+  wCtx.save(); wCtx.translate(x, cy);
   /* shadow */
-  ctx.save();
-  ctx.fillStyle = 'rgba(79,70,229,0.2)';
-  ctx.beginPath();
-  ctx.ellipse(0, 30 + bobY, 13, 3.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  ctx.strokeStyle = '#818cf8';
-  ctx.lineCap     = 'round';
-
+  wCtx.fillStyle = 'rgba(79,70,229,0.2)';
+  wCtx.beginPath(); wCtx.ellipse(0, 30 + bob, 13, 3.5, 0, 0, Math.PI * 2); wCtx.fill();
+  wCtx.strokeStyle = '#818cf8'; wCtx.lineCap = 'round';
   /* backpack */
-  ctx.save();
-  ctx.fillStyle   = 'rgba(79,70,229,0.55)';
-  ctx.strokeStyle = '#a5b4fc';
-  ctx.lineWidth   = 1.5;
-  drawRounded(3, -22, 9, 12, 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
-
+  wCtx.save(); wCtx.fillStyle = 'rgba(79,70,229,0.55)'; wCtx.strokeStyle = '#a5b4fc'; wCtx.lineWidth = 1.5;
+  drawRounded(wCtx, 3, -22, 9, 12, 2); wCtx.fill(); wCtx.stroke(); wCtx.restore();
   /* right leg */
-  ctx.save();
-  ctx.strokeStyle = '#818cf8';
-  ctx.lineWidth   = 2.6;
-  ctx.translate(0, 10);
-  ctx.rotate(-swing);
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(4, 19); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(4, 19); ctx.lineTo(10, 17); ctx.stroke();
-  ctx.restore();
-
+  wCtx.save(); wCtx.strokeStyle = '#818cf8'; wCtx.lineWidth = 2.6; wCtx.translate(0, 10); wCtx.rotate(-sw);
+  wCtx.beginPath(); wCtx.moveTo(0,0); wCtx.lineTo(4,19); wCtx.stroke();
+  wCtx.beginPath(); wCtx.moveTo(4,19); wCtx.lineTo(10,17); wCtx.stroke(); wCtx.restore();
   /* left leg */
-  ctx.save();
-  ctx.strokeStyle = '#818cf8';
-  ctx.lineWidth   = 2.6;
-  ctx.translate(0, 10);
-  ctx.rotate(swing);
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-4, 19); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-4, 19); ctx.lineTo(-10, 21); ctx.stroke();
-  ctx.restore();
-
+  wCtx.save(); wCtx.strokeStyle = '#818cf8'; wCtx.lineWidth = 2.6; wCtx.translate(0, 10); wCtx.rotate(sw);
+  wCtx.beginPath(); wCtx.moveTo(0,0); wCtx.lineTo(-4,19); wCtx.stroke();
+  wCtx.beginPath(); wCtx.moveTo(-4,19); wCtx.lineTo(-10,21); wCtx.stroke(); wCtx.restore();
   /* body */
-  ctx.strokeStyle = '#818cf8';
-  ctx.lineWidth   = 2.8;
-  ctx.beginPath(); ctx.moveTo(0, -22); ctx.lineTo(0, 10); ctx.stroke();
-
+  wCtx.strokeStyle = '#818cf8'; wCtx.lineWidth = 2.8;
+  wCtx.beginPath(); wCtx.moveTo(0,-22); wCtx.lineTo(0,10); wCtx.stroke();
   /* right arm */
-  ctx.save();
-  ctx.strokeStyle = '#818cf8';
-  ctx.lineWidth   = 2.4;
-  ctx.translate(0, -12);
-  ctx.rotate(swing);
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(13, 12); ctx.stroke();
-  ctx.restore();
-
+  wCtx.save(); wCtx.strokeStyle = '#818cf8'; wCtx.lineWidth = 2.4; wCtx.translate(0,-12); wCtx.rotate(sw);
+  wCtx.beginPath(); wCtx.moveTo(0,0); wCtx.lineTo(13,12); wCtx.stroke(); wCtx.restore();
   /* left arm */
-  ctx.save();
-  ctx.strokeStyle = '#818cf8';
-  ctx.lineWidth   = 2.4;
-  ctx.translate(0, -12);
-  ctx.rotate(-swing);
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-13, 12); ctx.stroke();
-  ctx.restore();
-
+  wCtx.save(); wCtx.strokeStyle = '#818cf8'; wCtx.lineWidth = 2.4; wCtx.translate(0,-12); wCtx.rotate(-sw);
+  wCtx.beginPath(); wCtx.moveTo(0,0); wCtx.lineTo(-13,12); wCtx.stroke(); wCtx.restore();
   /* head */
-  ctx.strokeStyle = '#818cf8';
-  ctx.lineWidth   = 2.5;
-  ctx.beginPath(); ctx.arc(0, -32, 9, 0, Math.PI * 2); ctx.stroke();
-
-  /* eyes */
-  ctx.fillStyle = '#818cf8';
-  ctx.beginPath(); ctx.arc(-3, -34, 1.4, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc( 3, -34, 1.4, 0, Math.PI * 2); ctx.fill();
-
-  /* smile */
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(0, -30, 4, 0.3, Math.PI - 0.3); ctx.stroke();
-
+  wCtx.strokeStyle = '#818cf8'; wCtx.lineWidth = 2.5;
+  wCtx.beginPath(); wCtx.arc(0,-32,9,0,Math.PI*2); wCtx.stroke();
+  wCtx.fillStyle = '#818cf8';
+  wCtx.beginPath(); wCtx.arc(-3,-34,1.4,0,Math.PI*2); wCtx.fill();
+  wCtx.beginPath(); wCtx.arc(3,-34,1.4,0,Math.PI*2); wCtx.fill();
+  wCtx.lineWidth = 1.5;
+  wCtx.beginPath(); wCtx.arc(0,-30,4,0.3,Math.PI-0.3); wCtx.stroke();
   /* hair */
-  ctx.strokeStyle = '#a5b4fc';
-  ctx.lineWidth   = 2;
-  ctx.beginPath();
-  ctx.moveTo(-8, -39);
-  ctx.quadraticCurveTo(0, -46, 8, -39);
-  ctx.stroke();
-
-  ctx.restore();
-
-  /* destination flag when near end */
-  if (x > canvas.width - 140) {
-    const a = Math.min(1, (x - (canvas.width - 140)) / 70);
-    ctx.save();
-    ctx.globalAlpha = a;
-    ctx.font = '26px serif';
-    ctx.fillText('📍', canvas.width - 48, 34);
-    ctx.restore();
+  wCtx.strokeStyle = '#a5b4fc'; wCtx.lineWidth = 2;
+  wCtx.beginPath(); wCtx.moveTo(-8,-39); wCtx.quadraticCurveTo(0,-46,8,-39); wCtx.stroke();
+  wCtx.restore();
+  /* destination flag */
+  if (x > wCanvas.width - 140) {
+    const a = Math.min(1, (x - (wCanvas.width - 140)) / 70);
+    wCtx.save(); wCtx.globalAlpha = a; wCtx.font = '26px serif';
+    wCtx.fillText('📍', wCanvas.width - 48, 34); wCtx.restore();
   }
 }
 
-function walkLoop() {
-  frame++;
-  boyX += 5.5;
-  drawBoy(boyX, frame);
-  if (boyX < canvas.width + 70) {
-    animId = requestAnimationFrame(walkLoop);
-  } else {
-    walkActive = false;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (walkTarget) window.location = '/directions?q=' + encodeURIComponent(walkTarget);
+function walkerLoop() {
+  wFrame++; wX += 5.5; drawWalker(wX, wFrame);
+  if (wX < wCanvas.width + 70) { wAnimId = requestAnimationFrame(walkerLoop); }
+  else {
+    wActive = false; wCtx.clearRect(0, 0, wCanvas.width, wCanvas.height);
+    if (wTarget) window.location = '/directions?q=' + encodeURIComponent(wTarget);
   }
 }
 
-function startWalker(query) {
-  if (walkActive) return;
-  walkActive  = true;
-  walkTarget  = query;
-  boyX        = -70;
-  frame       = 0;
-  if (animId) cancelAnimationFrame(animId);
-  walkLoop();
+function startWalker(q) {
+  if (wActive) return;
+  wActive = true; wTarget = q; wX = -70; wFrame = 0;
+  if (wAnimId) cancelAnimationFrame(wAnimId);
+  walkerLoop();
 }
 
-/* ═══════════════════════════════════════
+/* ═══════════════════════════════════════════════════════
    SEARCH LOGIC
-═══════════════════════════════════════ */
+═══════════════════════════════════════════════════════ */
 const input = document.getElementById('homeSearch');
 const box   = document.getElementById('homeSuggestions');
 
 input.addEventListener('input', function () {
   const q = input.value.trim();
+  updateFootsteps(input.value);
   if (!q) { box.style.display = 'none'; box.innerHTML = ''; return; }
   fetch('/suggest?q=' + encodeURIComponent(q))
     .then(r => r.json())
@@ -365,8 +400,7 @@ input.addEventListener('input', function () {
 function triggerSearch(term) {
   const val = term || input.value.trim();
   if (!val) {
-    input.focus();
-    input.classList.add('shake');
+    input.focus(); input.classList.add('shake');
     setTimeout(() => input.classList.remove('shake'), 500);
     return;
   }
@@ -374,19 +408,35 @@ function triggerSearch(term) {
   btn.classList.add('searching');
   btn.querySelector('.btn-label').textContent = 'Going...';
   document.getElementById('searchIcon').style.animation = 'spin 0.5s linear infinite';
+  setSmState('type');
   box.style.display = 'none';
-  startWalker(val);
+  setTimeout(() => startWalker(val), 300);
 }
 
 function goToResults()  { triggerSearch(); }
-function quickSearch(t) { input.value = t; triggerSearch(t); }
+function quickSearch(t) { input.value = t; updateFootsteps(t); triggerSearch(t); }
 input.addEventListener('keypress', e => { if (e.key === 'Enter') triggerSearch(); });
 document.addEventListener('click', e => {
-  if (!document.querySelector('.search-outer').contains(e.target))
-    box.style.display = 'none';
+  if (!document.querySelector('.search-outer').contains(e.target)) box.style.display = 'none';
 });
+
+/* Search man events */
+input.addEventListener('focus', () => { if (smState === 'sleep') setSmState('wake'); });
+input.addEventListener('input', () => { if (smState !== 'sleep') setSmState('type'); });
+input.addEventListener('blur',  () => {
+  if (!input.value.trim()) setTimeout(() => { if (document.activeElement !== input) setSmState('sleep'); }, 2500);
+});
+
+/* Search card glow */
 input.addEventListener('focus', () => document.getElementById('searchCard').classList.add('focused'));
 input.addEventListener('blur',  () => document.getElementById('searchCard').classList.remove('focused'));
+
+/* Count-up stats */
+function countUp(el) {
+  const t = +el.dataset.target; let cur = 0;
+  const timer = setInterval(() => { cur = Math.min(cur + 1, t); el.textContent = cur + '+'; if (cur >= t) clearInterval(timer); }, 60);
+}
+setTimeout(() => document.querySelectorAll('.count-up').forEach(countUp), 600);
 </script>
 </body>
 </html>

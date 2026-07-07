@@ -781,6 +781,168 @@ input.shake { animation: shake 0.4s ease; }
 .cat-chip:active { transform: scale(0.95) !important; }
 
 /* ============================================================
+   SEARCH MAN (sleeping student on search box)
+   ============================================================ */
+.search-man-scene {
+  position: absolute;
+  top: -66px;
+  left: 22px;
+  z-index: 30;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+}
+.sm-zzz {
+  position: absolute;
+  top: 4px;
+  left: 48px;
+  font-size: 0.6rem;
+  font-style: italic;
+  font-weight: 600;
+  color: rgba(129,140,248,0.9);
+  letter-spacing: 3px;
+  transition: opacity 0.4s;
+  animation: zzzFloat 2.2s ease-in-out infinite;
+}
+@keyframes zzzFloat {
+  0%,100% { transform: translateY(0) scale(1); opacity: 0.9; }
+  50%     { transform: translateY(-6px) scale(1.1); opacity: 1; }
+}
+
+/* ============================================================
+   FOOTSTEP TRAIL
+   ============================================================ */
+.footstep-trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px 20px 0;
+  min-height: 24px;
+  max-width: 540px;
+  width: 100%;
+}
+.footstep {
+  font-size: 0.7rem;
+  display: inline-block;
+  opacity: 0.6;
+  animation: stepPop 0.25s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes stepPop {
+  from { transform: scale(0) rotate(-30deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg);   opacity: 0.6; }
+}
+
+/* ============================================================
+   CONFETTI CANVAS
+   ============================================================ */
+.confetti-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9998;
+  display: none;
+}
+
+/* ============================================================
+   ENTRY RUNNER CANVAS
+   ============================================================ */
+.entry-runner-canvas {
+  position: fixed;
+  top: 56px;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  pointer-events: none;
+  z-index: 9997;
+  display: none;
+}
+
+/* ============================================================
+   JOURNEY PROGRESS BAR
+   ============================================================ */
+.journey-bar-wrap {
+  margin-bottom: 20px;
+  animation: fadeUp 0.5s ease both;
+}
+.journey-bar-track {
+  position: relative;
+  height: 8px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 20px;
+  overflow: visible;
+  margin-bottom: 6px;
+}
+.journey-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 20px;
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 0 10px rgba(79,70,229,0.5);
+}
+.journey-bar-walker {
+  position: absolute;
+  top: -10px;
+  left: -12px;
+  font-size: 1rem;
+  transition: left 0.6s cubic-bezier(.4,0,.2,1);
+  animation: walkerBounce 0.4s ease-in-out infinite alternate;
+  filter: drop-shadow(0 2px 4px rgba(79,70,229,0.5));
+}
+@keyframes walkerBounce {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-3px); }
+}
+.journey-bar-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: right;
+  font-weight: 600;
+  transition: color 0.3s;
+}
+
+/* ============================================================
+   LOCATION CARD — shimmer entrance
+   ============================================================ */
+.location-card {
+  position: relative;
+  overflow: hidden;
+}
+.location-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  animation: cardShimmer 2s ease 0.3s 1 forwards;
+}
+@keyframes cardShimmer {
+  from { left: -100%; }
+  to   { left: 150%; }
+}
+
+/* ============================================================
+   STEP ITEM — enhanced slide-in alternating
+   ============================================================ */
+.step-item {
+  animation: stepSlideIn 0.45s ease both;
+}
+@keyframes stepSlideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.step-item:nth-child(even) {
+  animation-name: stepSlideInR;
+}
+@keyframes stepSlideInR {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ============================================================
    SITE FOOTER
    ============================================================ */
 .site-footer {
