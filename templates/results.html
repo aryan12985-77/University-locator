@@ -173,20 +173,29 @@ function buildSteps() {
   const list = document.getElementById("stepsList");
   const steps = [];
 
+  /* Step 1: where the user currently is → destination building.
+     Placeholder text now; replaced live once GPS resolves (see locateForSteps). */
   steps.push({
+    id:   "gpsStep",
     text: "Head to <strong>" + LOC.building + "</strong> on campus",
-    sub:  "Use the map below or ask campus security for directions to this building."
+    sub:  "Turn on location access for a live distance & direction from where you're standing."
   });
 
-  if (LOC.floor && LOC.floor.toLowerCase() !== "ground") {
-    steps.push({
-      text: "Go to the <strong>" + LOC.floor + "</strong>",
-      sub:  "Take the stairs or elevator to reach the correct floor."
-    });
-  } else {
+  const floorLower = (LOC.floor || "").trim().toLowerCase();
+  if (!LOC.floor || floorLower === "ground") {
     steps.push({
       text: "Stay on the <strong>Ground Floor</strong>",
       sub:  "The location is on the ground level — no stairs needed."
+    });
+  } else if (floorLower === "multiple") {
+    steps.push({
+      text: "This building has <strong>multiple floors</strong>",
+      sub:  "Check the directory board near the entrance to find the exact floor for " + LOC.name + "."
+    });
+  } else {
+    steps.push({
+      text: "Go to the <strong>" + LOC.floor + "</strong>",
+      sub:  "Take the stairs or elevator to reach the correct floor."
     });
   }
 
@@ -211,10 +220,60 @@ function buildSteps() {
     li.style.animationDelay = (i * 0.08).toFixed(2) + "s";
     li.innerHTML =
       "<div class='step-num'>" + (i + 1) + "</div>" +
-      "<div><div class='step-text'>" + s.text + "</div>" +
-      (s.sub ? "<div class='step-sub'>" + s.sub + "</div>" : "") + "</div>";
+      "<div><div class='step-text'" + (s.id ? " id='" + s.id + "Text'" : "") + ">" + s.text + "</div>" +
+      "<div class='step-sub'" + (s.id ? " id='" + s.id + "Sub'" : "") + ">" + (s.sub || "") + "</div></div>";
     list.appendChild(li);
   });
+
+  locateForSteps();
+}
+
+/* ============ GPS-AWARE FIRST STEP ============
+   Asks the browser for the user's real position (once, not a
+   continuous watch — that's what the inline map does separately)
+   and turns "Head to X" into a real distance + compass direction. */
+function locateForSteps() {
+  const textEl = document.getElementById("gpsStepText");
+  const subEl  = document.getElementById("gpsStepSub");
+  if (!textEl) return;
+
+  if (!navigator.geolocation) {
+    subEl.textContent = "Your browser doesn't support location — use the map below instead.";
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const uLat = pos.coords.latitude, uLng = pos.coords.longitude;
+      const dLat = LOC.entry_lat, dLng = LOC.entry_lng;
+      const dist = haversineI(uLat, uLng, dLat, dLng);
+      const dir  = compassDirection(bearingTo(uLat, uLng, dLat, dLng));
+      const mins = Math.max(1, Math.round(dist / 80));
+      const distLabel = dist < 1000 ? Math.round(dist) + "m" : (dist / 1000).toFixed(1) + "km";
+
+      textEl.innerHTML = "You're <strong>" + distLabel + "</strong> away — head <strong>" +
+        dir + "</strong> towards <strong>" + LOC.building + "</strong>";
+      subEl.textContent = "~" + mins + " min walk, calculated live from your current location.";
+    },
+    (err) => {
+      subEl.textContent = err.code === 1
+        ? "Location access denied — allow it for a live distance & direction, or use the map below."
+        : "Couldn't get your location — use the map below for live GPS directions.";
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+  );
+}
+
+function bearingTo(lat1, lng1, lat2, lng2) {
+  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+  const Δλ = (lng2 - lng1) * Math.PI / 180;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+function compassDirection(deg) {
+  const dirs = ["North","North-East","East","South-East","South","South-West","West","North-West"];
+  return dirs[Math.round(deg / 45) % 8];
 }
 
 /* ============ INLINE MAP ============ */
