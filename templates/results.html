@@ -20,8 +20,11 @@
 <!-- confetti overlay -->
 <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
-<!-- mini entrance runner -->
+<!-- mini entrance runner (mascot running fast to the destination) -->
 <canvas id="entryRunnerCanvas" class="entry-runner-canvas"></canvas>
+
+<!-- arrival popup -->
+<div class="arrival-toast" id="arrivalToast">🎉 You Arrived!</div>
 
 <div class="results-page">
 
@@ -430,8 +433,6 @@ function setupJourneyBar() {
       walker.style.left  = 'calc(' + pct + '% - 12px)';
       label.textContent  = 'Step ' + idx + ' of ' + total;
       if (idx === total) {
-        setTimeout(launchConfetti, 400);
-        label.textContent = '🎉 You Arrived!';
         label.style.color = '#10b981';
       }
     });
@@ -489,46 +490,78 @@ function launchConfetti() {
 }
 
 /* ═══════════════════════════════════════════════
-   MINI ENTRANCE RUNNER (runs across top on load)
+   MINI ENTRANCE RUNNER — mascot sprints across top
+   in fast mode, then shows the "You Arrived" popup
 ═══════════════════════════════════════════════ */
+function showArrivalToast() {
+  const t = document.getElementById('arrivalToast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
 function runEntryRunner() {
   const cv  = document.getElementById('entryRunnerCanvas');
   const ctx = cv.getContext('2d');
   cv.width  = window.innerWidth;
-  cv.height = 60;
+  cv.height = 66;
   cv.style.display = 'block';
+
+  const MAIN = '#a5b4fc', CAP = '#3730a3', CYAN = '#67e8f9';
 
   let rx = -40, rf = 0;
   (function loop() {
-    rf++; rx += 7;
+    rf++; rx += 9;
     ctx.clearRect(0, 0, cv.width, cv.height);
-    if (rx > cv.width + 40) { cv.style.display = 'none'; return; }
+    if (rx > cv.width + 40) {
+      cv.style.display = 'none';
+      launchConfetti();
+      showArrivalToast();
+      return;
+    }
 
-    const sw  = Math.sin(rf * 0.32) * 0.5;
-    const bob = Math.abs(Math.sin(rf * 0.32)) * 2;
-    const cy  = 42 - bob;
+    const sw  = Math.sin(rf * 0.5) * 0.75;
+    const bob = Math.abs(Math.sin(rf * 0.5)) * 3.5;
+    const cy  = 44 - bob;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
     ctx.save();
     ctx.translate(rx, cy);
-    ctx.strokeStyle = '#a5b4fc'; ctx.fillStyle = '#a5b4fc'; ctx.lineCap = 'round';
 
-    ctx.lineWidth = 2;
-    ctx.save(); ctx.translate(0,8); ctx.rotate(sw);
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-3,14); ctx.stroke(); ctx.restore();
-    ctx.save(); ctx.translate(0,8); ctx.rotate(-sw);
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(3,14); ctx.stroke(); ctx.restore();
+    /* speed lines */
+    ctx.save(); ctx.globalAlpha = 0.35; ctx.strokeStyle = CYAN; ctx.lineWidth = 1.5;
+    [10,17,24].forEach((y,i) => { ctx.beginPath(); ctx.moveTo(-16-i*3, y-14); ctx.lineTo(-26-i*3, y-14); ctx.stroke(); });
+    ctx.restore();
 
-    ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.moveTo(0,-14); ctx.lineTo(0,8); ctx.stroke();
+    /* cap */
+    ctx.save(); ctx.translate(0, -21); ctx.fillStyle = CAP;
+    ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(9,0); ctx.lineTo(7,-6); ctx.lineTo(-7,-6); ctx.closePath(); ctx.fill();
+    ctx.fillRect(-10,-1,20,3);
+    ctx.strokeStyle = CYAN; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(12,8); ctx.stroke();
+    ctx.restore();
 
-    ctx.lineWidth = 1.8;
-    ctx.save(); ctx.translate(0,-4); ctx.rotate(sw);
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(9,8); ctx.stroke(); ctx.restore();
-    ctx.save(); ctx.translate(0,-4); ctx.rotate(-sw);
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-9,8); ctx.stroke(); ctx.restore();
+    /* head */
+    ctx.strokeStyle = MAIN; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(0, -14, 9, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = MAIN;
+    ctx.beginPath(); ctx.arc(-3,-15,2,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(3,-15,2,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = CYAN; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,-11,5,0.2,Math.PI-0.2); ctx.stroke();
 
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(0,-20,6,0,Math.PI*2); ctx.stroke();
+    /* body */
+    ctx.strokeStyle = MAIN; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(0,-5); ctx.lineTo(0,14); ctx.stroke();
+
+    /* arms */
+    ctx.strokeStyle = CYAN; ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.moveTo(0,3); ctx.lineTo(-13*Math.cos(sw), 3+12*Math.sin(sw)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,3); ctx.lineTo(13*Math.cos(sw), 3-12*Math.sin(sw)); ctx.stroke();
+
+    /* legs */
+    ctx.strokeStyle = MAIN; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(0,14); ctx.lineTo(-10*Math.sin(sw), 27); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,14); ctx.lineTo(10*Math.sin(sw), 27); ctx.stroke();
 
     ctx.restore();
     requestAnimationFrame(loop);

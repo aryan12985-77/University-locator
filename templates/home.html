@@ -10,12 +10,9 @@
 </head>
 <body>
 
-<div class="orb orb-1"></div>
-<div class="orb orb-2"></div>
-<div class="orb orb-3"></div>
+<canvas id="earthCanvas" class="earth-globe" width="190" height="190"></canvas>
 <div class="map-grid-bg"></div>
 <div class="float-icons" id="floatIcons"></div>
-<canvas id="walkerCanvas" class="walker-canvas"></canvas>
 
 <div class="home-page">
 
@@ -50,18 +47,11 @@
 
     <p class="a3">Search for classrooms, offices, labs, canteen and more — get step-by-step directions instantly.</p>
 
-    <!-- SEARCH WITH MAN INSIDE -->
+    <!-- SEARCH BOX — mascot walks with the typed text -->
     <div class="search-outer a4">
       <div class="search-card glass" id="searchCard">
-
-        <!-- ★ Man lives inside the search box, left side ★ -->
-        <div class="sm-box-wrap" id="smBoxWrap">
-          <canvas id="smCanvas" width="52" height="50"></canvas>
-        </div>
-
-        <!-- Input + custom placeholder -->
         <div class="search-input-wrap">
-          <span class="s-placeholder" id="sPlaceholder">Where do you want to go?</span>
+          <span class="s-placeholder" id="sPlaceholder">Search for anything...</span>
           <input
             type="text"
             id="homeSearch"
@@ -70,16 +60,18 @@
             spellcheck="false"
           >
         </div>
-
         <button class="search-btn" id="searchBtn" onclick="triggerSearch()">
           <span class="btn-label">Go →</span>
           <span class="btn-ripple"></span>
         </button>
       </div>
 
-      <div id="homeSuggestions"></div>
+      <!-- mascot overlay, slides horizontally with text length -->
+      <div class="sm-track" id="smTrack">
+        <canvas id="smCanvas" width="46" height="50"></canvas>
+      </div>
 
-      <!-- Footstep trail -->
+      <div id="homeSuggestions"></div>
       <div class="footstep-trail" id="footstepTrail"></div>
     </div>
 
@@ -132,122 +124,150 @@
 })();
 
 /* ═══════════════════════════════════════════════════════
-   STUDENT MAN — INSIDE THE SEARCH BOX
+   EARTH GLOBE — globe itself is static, only the
+   continents rotate across the sphere surface
+═══════════════════════════════════════════════════════ */
+(function () {
+  const cv  = document.getElementById('earthCanvas');
+  const ctx = cv.getContext('2d');
+  const CX = 95, CY = 95, R = 82;
+  let rot = 0;
+
+  const land = [
+    { lon: 0,   lat: 8,   w: 30, h: 20 },
+    { lon: 35,  lat: 34,  w: 40, h: 17 },
+    { lon: 95,  lat: 30,  w: 26, h: 15 },
+    { lon: -55, lat: 24,  w: 20, h: 28 },
+    { lon: -62, lat: -22, w: 15, h: 22 },
+    { lon: 132, lat: -22, w: 18, h: 13 },
+    { lon: 18,  lat: -28, w: 15, h: 14 },
+    { lon: 100, lat: 48,  w: 32, h: 13 },
+    { lon: -20, lat: 55,  w: 12, h: 10 },
+  ];
+
+  function drawGlobe() {
+    ctx.clearRect(0, 0, 190, 190);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2); ctx.clip();
+
+    const ocean = ctx.createRadialGradient(CX-28, CY-28, 8, CX, CY, R*1.3);
+    ocean.addColorStop(0, '#38bdf8'); ocean.addColorStop(0.55, '#0ea5e9'); ocean.addColorStop(1, '#0c4a6e');
+    ctx.fillStyle = ocean;
+    ctx.fillRect(0, 0, 190, 190);
+
+    land.forEach(c => {
+      const lonRad = (c.lon + rot) * Math.PI / 180;
+      const latRad = c.lat * Math.PI / 180;
+      const cosLon = Math.cos(lonRad);
+      if (cosLon <= -0.2) return;
+      const x = CX + R * Math.cos(latRad) * Math.sin(lonRad);
+      const y = CY - R * Math.sin(latRad) * 0.92;
+      const scaleX = Math.max(0.12, Math.abs(cosLon));
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scaleX, 1);
+      ctx.globalAlpha = 0.6 + 0.4 * Math.max(0, cosLon);
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, c.w/2, c.h/2, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    });
+
+    const shade = ctx.createRadialGradient(CX-25, CY-28, 4, CX, CY, R);
+    shade.addColorStop(0, 'rgba(255,255,255,0.28)');
+    shade.addColorStop(0.55, 'rgba(255,255,255,0)');
+    shade.addColorStop(1, 'rgba(0,5,20,0.4)');
+    ctx.fillStyle = shade;
+    ctx.fillRect(0, 0, 190, 190);
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(103,232,249,0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(CX, CY, R+2, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    rot += 0.28;
+    requestAnimationFrame(drawGlobe);
+  }
+  drawGlobe();
+})();
+
+/* ═══════════════════════════════════════════════════════
+   STUDENT MASCOT — lives inside the search box
    States: sleep → wake → idle → type → delete → empty → run
+   Position along the box tracks how much text is typed.
 ═══════════════════════════════════════════════════════ */
 const smCanvas  = document.getElementById('smCanvas');
 const smCtx     = smCanvas.getContext('2d');
 const SW = smCanvas.width, SH = smCanvas.height;
+const smTrack   = document.getElementById('smTrack');
+const searchCard = document.getElementById('searchCard');
 
-let smState      = 'sleep'; // current state
-let smFrame      = 0;       // frame counter within state
-let smRunX       = 0;       // x offset for run state
-let smRunDone    = false;
+let smState      = 'sleep';
+let smFrame      = 0;
 let smWakeTimer  = null;
 let smIdleTimer  = null;
 let smEmoteTimer = null;
-let smEmote      = null;    // 'look-l' | 'look-r' | 'wave' | 'tap'
+let smEmote      = null;
 let smEmoteFrame = 0;
 let lastInputLen = 0;
-let lastTypeDir  = 1; // 1=typing, -1=deleting
 
-/* ─── helpers ─── */
 function sc(hex, a) {
   const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
   return `rgba(${r},${g},${b},${a})`;
 }
-const COL_MAIN  = '#a5b4fc';
-const COL_DARK  = '#818cf8';
-const COL_SKIN  = '#fcd34d'; // skin-ish warm
-const COL_CAP   = '#3730a3';
-const COL_CYAN  = '#67e8f9';
+const COL_MAIN = '#a5b4fc', COL_DARK = '#818cf8', COL_CAP = '#3730a3', COL_CYAN = '#67e8f9';
 
-function smLine(ctx, x1,y1,x2,y2,w,col) {
-  ctx.save(); ctx.strokeStyle=col||COL_MAIN; ctx.lineWidth=w||2; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); ctx.restore();
-}
-function smCirc(ctx, cx,cy,r,fill,stroke,w) {
-  ctx.save(); if(fill){ctx.fillStyle=fill; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();} if(stroke){ctx.strokeStyle=stroke; ctx.lineWidth=w||2; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();} ctx.restore();
-}
+function smLine(ctx,x1,y1,x2,y2,w,col){ ctx.save(); ctx.strokeStyle=col||COL_MAIN; ctx.lineWidth=w||2; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); ctx.restore(); }
+function smCirc(ctx,cx,cy,r,fill,stroke,w){ ctx.save(); if(fill){ctx.fillStyle=fill; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();} if(stroke){ctx.strokeStyle=stroke; ctx.lineWidth=w||2; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();} ctx.restore(); }
 function smDot(ctx,cx,cy,r,col){ ctx.save(); ctx.fillStyle=col||COL_MAIN; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill(); ctx.restore(); }
-
-/* ─── DRAW SLEEPING MAN ─── */
-function drawSleep(f) {
-  const ctx = smCtx;
-  const breathe = Math.sin(f * 0.04) * 0.8;
-
-  /* body blob */
-  ctx.save();
-  ctx.translate(SW/2 + breathe * 0.5, SH/2 + 6 + breathe * 0.3);
-  ctx.scale(1, 0.85);
-  smCirc(ctx, 0, 0, 12, sc(COL_DARK, 0.25), COL_DARK, 1.5);
-  ctx.restore();
-
-  /* head resting */
-  const hx = SW/2, hy = SH/2 - 2 + breathe;
-  smCirc(ctx, hx, hy, 9, null, COL_MAIN, 2);
-
-  /* graduation cap tilted */
-  ctx.save();
-  ctx.translate(hx, hy - 8);
-  ctx.rotate(-0.3);
-  ctx.fillStyle = COL_CAP;
-  ctx.beginPath(); ctx.moveTo(-8,0); ctx.lineTo(8,0); ctx.lineTo(6,-5); ctx.lineTo(-6,-5); ctx.closePath(); ctx.fill();
-  ctx.fillRect(-9, -1, 18, 3);
-  /* tassel drooping */
-  ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 1.4;
-  ctx.beginPath(); ctx.moveTo(7,0); ctx.quadraticCurveTo(10, 3, 9, 8); ctx.stroke();
-  ctx.restore();
-
-  /* closed eyes */
-  ctx.strokeStyle = COL_MAIN; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.arc(hx - 3, hy - 1, 2.5, Math.PI, 0); ctx.stroke();
-  ctx.beginPath(); ctx.arc(hx + 3, hy - 1, 2.5, Math.PI, 0); ctx.stroke();
-
-  /* Z Z Z */
-  const zAlpha = 0.5 + Math.sin(f * 0.06) * 0.4;
-  ctx.save();
-  ctx.fillStyle = sc(COL_CYAN, zAlpha);
-  ctx.font = 'bold 7px Poppins, sans-serif';
-  ctx.fillText('z', hx + 10, hy - 10 + Math.sin(f * 0.08) * 2);
-  ctx.fillText('z', hx + 16, hy - 17 + Math.sin(f * 0.08 + 1) * 2);
-  ctx.fillText('Z', hx + 22, hy - 25 + Math.sin(f * 0.08 + 2) * 2);
-  ctx.restore();
-}
-
-/* ─── DRAW WAKE TRANSITION ─── */
-function drawWake(f) {
-  const ctx = smCtx;
-  const t   = Math.min(f / 18, 1);
-  /* lerp from sleep pos to standing pos */
-  const cx  = SW / 2;
-  const hy  = SH/2 - 2 + (1-t) * 0 - t * 12; // head rises
-  const bob = (1-t) * 8;
-
-  /* head */
-  smCirc(ctx, cx, hy + 8, 9, null, COL_MAIN, 2.2);
-
-  /* eyes: flutter open */
-  if (t < 0.5) {
-    ctx.strokeStyle = COL_MAIN; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.arc(cx-3, hy+7, 2.5, Math.PI, 0); ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx+3, hy+7, 2.5, Math.PI, 0); ctx.stroke();
-  } else {
-    smDot(ctx, cx-3, hy+7, 2, COL_MAIN);
-    smDot(ctx, cx+3, hy+7, 2, COL_MAIN);
-  }
-
-  /* cap */
-  ctx.save(); ctx.translate(cx, hy + 1); ctx.fillStyle = COL_CAP;
+function smCap(ctx,cx,hy){
+  ctx.save(); ctx.translate(cx, hy-1); ctx.fillStyle = COL_CAP;
   ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(9,0); ctx.lineTo(7,-6); ctx.lineTo(-7,-6); ctx.closePath(); ctx.fill();
   ctx.fillRect(-10,-1,20,3);
   ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 1.4;
   ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(11,8); ctx.stroke(); ctx.restore();
+}
 
-  /* body growing */
-  const bodyLen = 20 * t;
+function drawSleep(f) {
+  const ctx = smCtx;
+  const breathe = Math.sin(f * 0.04) * 0.8;
+  ctx.save(); ctx.translate(SW/2 + breathe*0.5, SH/2 + 6 + breathe*0.3); ctx.scale(1,0.85);
+  smCirc(ctx, 0, 0, 12, sc(COL_DARK,0.25), COL_DARK, 1.5); ctx.restore();
+  const hx = SW/2, hy = SH/2 - 2 + breathe;
+  smCirc(ctx, hx, hy, 9, null, COL_MAIN, 2);
+  ctx.save(); ctx.translate(hx, hy-8); ctx.rotate(-0.3); ctx.fillStyle = COL_CAP;
+  ctx.beginPath(); ctx.moveTo(-8,0); ctx.lineTo(8,0); ctx.lineTo(6,-5); ctx.lineTo(-6,-5); ctx.closePath(); ctx.fill();
+  ctx.fillRect(-9,-1,18,3);
+  ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(7,0); ctx.quadraticCurveTo(10,3,9,8); ctx.stroke(); ctx.restore();
+  ctx.strokeStyle = COL_MAIN; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.arc(hx-3, hy-1, 2.5, Math.PI, 0); ctx.stroke();
+  ctx.beginPath(); ctx.arc(hx+3, hy-1, 2.5, Math.PI, 0); ctx.stroke();
+  const zAlpha = 0.5 + Math.sin(f*0.06)*0.4;
+  ctx.save(); ctx.fillStyle = sc(COL_CYAN, zAlpha); ctx.font = 'bold 7px Poppins, sans-serif';
+  ctx.fillText('z', hx+10, hy-10+Math.sin(f*0.08)*2);
+  ctx.fillText('z', hx+16, hy-17+Math.sin(f*0.08+1)*2);
+  ctx.fillText('Z', hx+22, hy-25+Math.sin(f*0.08+2)*2);
+  ctx.restore();
+}
+
+function drawWake(f) {
+  const ctx = smCtx;
+  const t   = Math.min(f/18, 1);
+  const cx  = SW/2;
+  const hy  = SH/2 - 2 - t*12;
+  smCirc(ctx, cx, hy+8, 9, null, COL_MAIN, 2.2);
+  if (t < 0.5) {
+    ctx.strokeStyle = COL_MAIN; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(cx-3, hy+7, 2.5, Math.PI, 0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx+3, hy+7, 2.5, Math.PI, 0); ctx.stroke();
+  } else { smDot(ctx, cx-3, hy+7, 2, COL_MAIN); smDot(ctx, cx+3, hy+7, 2, COL_MAIN); }
+  smCap(ctx, cx, hy+1);
+  const bodyLen = 20*t;
   smLine(ctx, cx, hy+17, cx, hy+17+bodyLen, 2.5, COL_MAIN);
-
-  /* arms stretching up (yawn) */
   if (t > 0.3) {
     const at = (t-0.3)/0.7;
     smLine(ctx, cx, hy+22, cx-12*at, hy+22-10*at, 2.2, COL_MAIN);
@@ -255,434 +275,225 @@ function drawWake(f) {
   }
 }
 
-/* ─── DRAW STANDING MAN (shared base) ─── */
-function drawStandBase(ctx, cx, hy, sw, emote, ef) {
-  /* cap */
-  ctx.save(); ctx.translate(cx, hy - 1); ctx.fillStyle = COL_CAP;
-  ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(9,0); ctx.lineTo(7,-6); ctx.lineTo(-7,-6); ctx.closePath(); ctx.fill();
-  ctx.fillRect(-10,-1,20,3);
-  ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 1.4;
-  ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(11,8); ctx.stroke(); ctx.restore();
-
-  /* head */
+function drawStandBase(ctx, cx, hy, sw, emote) {
+  smCap(ctx, cx, hy+1);
   const lookX = emote==='look-l' ? -2 : emote==='look-r' ? 2 : 0;
-  smCirc(ctx, cx + lookX * 0.3, hy+8, 9, null, COL_MAIN, 2.2);
-
-  /* eyes */
+  smCirc(ctx, cx+lookX*0.3, hy+8, 9, null, COL_MAIN, 2.2);
   smDot(ctx, cx+lookX-3, hy+7, 2, COL_MAIN);
   smDot(ctx, cx+lookX+3, hy+7, 2, COL_MAIN);
-
-  /* body */
   smLine(ctx, cx, hy+17, cx, hy+37, 2.5, COL_MAIN);
-
-  /* arms */
-  const lx  = cx - 12*Math.cos(sw*0.7), ly = hy+25 + 10*Math.sin(sw);
-  const rx  = cx + 12*Math.cos(sw*0.7), ry = hy+25 - 10*Math.sin(sw);
+  const lx = cx-12*Math.cos(sw*0.7), ly = hy+25+10*Math.sin(sw);
+  const rx = cx+12*Math.cos(sw*0.7), ry = hy+25-10*Math.sin(sw);
   smLine(ctx, cx, hy+25, lx, ly, 2.2, COL_MAIN);
   smLine(ctx, cx, hy+25, rx, ry, 2.2, COL_MAIN);
-
-  /* legs */
-  smLine(ctx, cx, hy+37, cx - 8*Math.sin(sw), hy+50, 2.4, COL_MAIN);
-  smLine(ctx, cx, hy+37, cx + 8*Math.sin(sw), hy+50, 2.4, COL_MAIN);
+  smLine(ctx, cx, hy+37, cx-8*Math.sin(sw), hy+50, 2.4, COL_MAIN);
+  smLine(ctx, cx, hy+37, cx+8*Math.sin(sw), hy+50, 2.4, COL_MAIN);
 }
 
-/* ─── IDLE STATE ─── */
 function drawIdle(f, emote, ef) {
-  const ctx = smCtx;
-  const cx  = SW / 2;
-  const bob = Math.sin(f * 0.05) * 1.5;
-  const hy  = 2 + bob;
-  const sw  = 0;
-
-  drawStandBase(ctx, cx, hy, sw, emote, ef);
-
-  /* emote-specific overlays */
+  const ctx = smCtx, cx = SW/2, bob = Math.sin(f*0.05)*1.5, hy = 2+bob;
+  drawStandBase(ctx, cx, hy, 0, emote);
   if (emote === 'wave') {
-    /* right arm waves up */
     ctx.save(); ctx.translate(cx, hy+25); ctx.rotate(-0.9 - Math.sin(ef*0.3)*0.5);
     ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 2.2;
     ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(12,5); ctx.stroke(); ctx.restore();
-    /* palm open */
     smDot(ctx, cx+18, hy+23+Math.sin(ef*0.3)*3, 2.5, COL_CYAN);
   }
-
   if (emote === 'tap') {
-    /* foot tap */
-    const tap = Math.abs(Math.sin(ef * 0.25)) * 3;
+    const tap = Math.abs(Math.sin(ef*0.25))*3;
     smDot(ctx, cx+8, hy+52-tap, 2.5, COL_CYAN);
   }
-
-  /* smile */
   ctx.strokeStyle = COL_MAIN; ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.arc(cx, hy+11, 4, 0.3, Math.PI-0.3); ctx.stroke();
 }
 
-/* ─── TYPING STATE — bouncy excited ─── */
 function drawType(f) {
-  const ctx = smCtx;
-  const cx  = SW / 2;
-  const bob = Math.abs(Math.sin(f * 0.35)) * 4;
-  const hy  = 2 - bob;
-  const sw  = Math.sin(f * 0.35) * 0.55;
-
-  drawStandBase(ctx, cx, hy, sw, null, 0);
-
-  /* BIG excited smile */
+  const ctx = smCtx, cx = SW/2, bob = Math.abs(Math.sin(f*0.35))*4, hy = 2-bob, sw = Math.sin(f*0.35)*0.55;
+  drawStandBase(ctx, cx, hy, sw, null);
   ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(cx, hy+11, 5, 0.2, Math.PI-0.2); ctx.stroke();
-
-  /* sparks at peak bounce */
   if (bob > 2.5) {
-    const sa = (bob - 2.5) / 1.5;
-    [['-','+'],['+',' +'],['-','-']].forEach(([dx,dy], i) => {
-      ctx.save();
-      ctx.fillStyle = sc(COL_CYAN, sa);
-      ctx.font = '7px sans-serif';
-      ctx.fillText('✦', cx + (i-1)*12, hy - 3 - i*2);
-      ctx.restore();
-    });
+    const sa = (bob-2.5)/1.5;
+    [0,1,2].forEach(i => { ctx.save(); ctx.fillStyle = sc(COL_CYAN, sa); ctx.font='7px sans-serif';
+      ctx.fillText('✦', cx+(i-1)*12, hy-3-i*2); ctx.restore(); });
   }
 }
 
-/* ─── DELETE STATE — confused scratch ─── */
 function drawDelete(f) {
-  const ctx = smCtx;
-  const cx  = SW / 2;
-  const bob = Math.sin(f * 0.12) * 1.5;
-  const hy  = 2 + bob;
-  const shake = Math.sin(f * 0.4) * 1.5; // slight head shake
-
-  /* cap tilted in confusion */
-  ctx.save(); ctx.translate(cx + shake, hy - 1); ctx.rotate(0.15);
-  ctx.fillStyle = COL_CAP;
+  const ctx = smCtx, cx = SW/2, bob = Math.sin(f*0.12)*1.5, hy = 2+bob, shake = Math.sin(f*0.4)*1.5;
+  ctx.save(); ctx.translate(cx+shake, hy-1); ctx.rotate(0.15); ctx.fillStyle = COL_CAP;
   ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(9,0); ctx.lineTo(7,-6); ctx.lineTo(-7,-6); ctx.closePath(); ctx.fill();
   ctx.fillRect(-10,-1,20,3);
   ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 1.4;
   ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(12,8); ctx.stroke(); ctx.restore();
-
-  /* head with slight shake */
-  smCirc(ctx, cx + shake, hy+8, 9, null, COL_MAIN, 2.2);
-
-  /* squiggly eyes (confused) */
+  smCirc(ctx, cx+shake, hy+8, 9, null, COL_MAIN, 2.2);
   ctx.strokeStyle = COL_MAIN; ctx.lineWidth = 1.6;
   ctx.beginPath(); ctx.moveTo(cx+shake-5, hy+7); ctx.quadraticCurveTo(cx+shake-3, hy+5, cx+shake-1, hy+7); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(cx+shake+1, hy+7); ctx.quadraticCurveTo(cx+shake+3, hy+5, cx+shake+5, hy+7); ctx.stroke();
-
-  /* frown */
   ctx.beginPath(); ctx.arc(cx+shake, hy+14, 3.5, Math.PI+0.3, 2*Math.PI-0.3); ctx.stroke();
-
-  /* body */
   smLine(ctx, cx, hy+17, cx, hy+37, 2.5, COL_MAIN);
-
-  /* left arm normal */
   smLine(ctx, cx, hy+25, cx-12, hy+32, 2.2, COL_MAIN);
-
-  /* right arm — scratching head */
-  const scratchY = hy + 5 + Math.sin(f * 0.4) * 2;
+  const scratchY = hy+5+Math.sin(f*0.4)*2;
   smLine(ctx, cx, hy+25, cx+10, scratchY, 2.2, COL_CYAN);
   smDot(ctx, cx+10, scratchY-2, 2, COL_CYAN);
-
-  /* legs — planted, slight sway */
   smLine(ctx, cx, hy+37, cx-6, hy+50, 2.4, COL_MAIN);
   smLine(ctx, cx, hy+37, cx+6, hy+50, 2.4, COL_MAIN);
-
-  /* ? bubble */
-  const qa = 0.5 + Math.sin(f * 0.1) * 0.4;
-  ctx.save(); ctx.fillStyle = sc(COL_CYAN, qa); ctx.font = 'bold 10px sans-serif';
-  ctx.fillText('?', cx + 15, hy - 4); ctx.restore();
+  const qa = 0.5+Math.sin(f*0.1)*0.4;
+  ctx.save(); ctx.fillStyle = sc(COL_CYAN, qa); ctx.font='bold 10px sans-serif'; ctx.fillText('?', cx+15, hy-4); ctx.restore();
 }
 
-/* ─── EMPTY STATE — shrug ─── */
 function drawEmpty(f) {
-  const ctx = smCtx;
-  const cx  = SW / 2;
-  const bob = Math.sin(f * 0.06) * 1;
-  const hy  = 2 + bob;
-  const shrug = Math.sin(f * 0.08) * 0.3; // arms oscillate
-
-  /* cap */
-  ctx.save(); ctx.translate(cx, hy-1); ctx.fillStyle = COL_CAP;
-  ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(9,0); ctx.lineTo(7,-6); ctx.lineTo(-7,-6); ctx.closePath(); ctx.fill();
-  ctx.fillRect(-10,-1,20,3);
-  ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 1.4;
-  ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(11,8); ctx.stroke(); ctx.restore();
-
-  /* head */
+  const ctx = smCtx, cx = SW/2, bob = Math.sin(f*0.06)*1, hy = 2+bob, shrug = Math.sin(f*0.08)*0.3;
+  smCap(ctx, cx, hy+1);
   smCirc(ctx, cx, hy+8, 9, null, COL_MAIN, 2.2);
-
-  /* flat "meh" eyes */
   smLine(ctx, cx-5, hy+7, cx-1, hy+7, 1.8, COL_MAIN);
   smLine(ctx, cx+1, hy+7, cx+5, hy+7, 1.8, COL_MAIN);
-
-  /* flat mouth */
   smLine(ctx, cx-4, hy+12, cx+4, hy+12, 1.8, COL_MAIN);
-
-  /* body */
   smLine(ctx, cx, hy+17, cx, hy+37, 2.5, COL_MAIN);
-
-  /* shrug arms — raised & bent outward */
   smLine(ctx, cx, hy+22, cx-14, hy+18+shrug*10, 2.2, COL_MAIN);
   smLine(ctx, cx-14, hy+18+shrug*10, cx-18, hy+24+shrug*5, 2.2, COL_MAIN);
   smLine(ctx, cx, hy+22, cx+14, hy+18-shrug*10, 2.2, COL_MAIN);
   smLine(ctx, cx+14, hy+18-shrug*10, cx+18, hy+24-shrug*5, 2.2, COL_MAIN);
-
-  /* legs */
   smLine(ctx, cx, hy+37, cx-6, hy+50, 2.4, COL_MAIN);
   smLine(ctx, cx, hy+37, cx+6, hy+50, 2.4, COL_MAIN);
-
-  /* ¯\_(ツ)_/¯ vibe — floating dots */
-  const da = 0.4 + Math.sin(f*0.1)*0.3;
-  ctx.save(); ctx.fillStyle = sc(COL_CYAN, da); ctx.font = '7px sans-serif';
-  ctx.fillText('•_•', cx-8, hy-4); ctx.restore();
+  const da = 0.4+Math.sin(f*0.1)*0.3;
+  ctx.save(); ctx.fillStyle = sc(COL_CYAN, da); ctx.font='7px sans-serif'; ctx.fillText('•_•', cx-8, hy-4); ctx.restore();
 }
 
-/* ─── RUN STATE — runs off screen to the right ─── */
-function drawRun(f, rx) {
-  const ctx = smCtx;
-  if (rx > SW + 30) return;
-  const sw  = Math.sin(f * 0.45) * 0.7;
-  const bob = Math.abs(Math.sin(f * 0.45)) * 3;
-  const hy  = 2 - bob;
-  const cx  = rx;
-
-  /* motion blur trail */
-  ctx.save(); ctx.globalAlpha = 0.15;
-  [-8,-16].forEach(dx => {
-    ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(cx+dx, hy+20); ctx.lineTo(cx+dx, hy+37); ctx.stroke();
-  });
+function drawRun(f) {
+  const ctx = smCtx, cx = SW/2;
+  const sw = Math.sin(f*0.5)*0.75, bob = Math.abs(Math.sin(f*0.5))*3.5, hy = 2-bob;
+  ctx.save(); ctx.globalAlpha = 0.18;
+  [-8,-16].forEach(dx => { ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx+dx, hy+20); ctx.lineTo(cx+dx, hy+37); ctx.stroke(); });
   ctx.restore();
-
-  /* cap */
-  ctx.save(); ctx.translate(cx, hy-1); ctx.fillStyle = COL_CAP;
-  ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(9,0); ctx.lineTo(7,-6); ctx.lineTo(-7,-6); ctx.closePath(); ctx.fill();
-  ctx.fillRect(-10,-1,20,3);
-  ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 1.4;
-  ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(12+sw*4,8); ctx.stroke(); ctx.restore();
-
+  smCap(ctx, cx, hy+1);
   smCirc(ctx, cx, hy+8, 9, null, COL_MAIN, 2.2);
-  smDot(ctx, cx-3, hy+7, 2, COL_MAIN);
-  smDot(ctx, cx+3, hy+7, 2, COL_MAIN);
+  smDot(ctx, cx-3, hy+7, 2, COL_MAIN); smDot(ctx, cx+3, hy+7, 2, COL_MAIN);
   ctx.strokeStyle = COL_CYAN; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(cx, hy+11, 5, 0.2, Math.PI-0.2); ctx.stroke();
-
   smLine(ctx, cx, hy+17, cx, hy+37, 2.5, COL_MAIN);
   smLine(ctx, cx, hy+25, cx-13*Math.cos(sw), hy+25+12*Math.sin(sw), 2.2, COL_CYAN);
   smLine(ctx, cx, hy+25, cx+13*Math.cos(sw), hy+25-12*Math.sin(sw), 2.2, COL_CYAN);
   smLine(ctx, cx, hy+37, cx-10*Math.sin(sw), hy+50, 2.4, COL_MAIN);
   smLine(ctx, cx, hy+37, cx+10*Math.sin(sw), hy+50, 2.4, COL_MAIN);
-
-  /* speed lines */
   ctx.save(); ctx.strokeStyle = sc(COL_CYAN, 0.5); ctx.lineWidth = 1;
-  [hy+15, hy+22, hy+29].forEach((y, i) => {
-    ctx.beginPath(); ctx.moveTo(cx-14-i*2, y); ctx.lineTo(cx-22-i*2, y); ctx.stroke();
-  });
+  [hy+15, hy+22, hy+29].forEach((y,i) => { ctx.beginPath(); ctx.moveTo(cx-14-i*2, y); ctx.lineTo(cx-22-i*2, y); ctx.stroke(); });
   ctx.restore();
 }
 
-/* ═══════════════════════════════════════════════════════
-   MAIN DRAW LOOP
-═══════════════════════════════════════════════════════ */
 function smDraw() {
   smCtx.clearRect(0, 0, SW, SH);
-  smCtx.lineCap = 'round';
-  smCtx.lineJoin = 'round';
-
+  smCtx.lineCap = 'round'; smCtx.lineJoin = 'round';
   if      (smState === 'sleep')  drawSleep(smFrame);
   else if (smState === 'wake')   drawWake(smFrame);
   else if (smState === 'idle')   drawIdle(smFrame, smEmote, smEmoteFrame);
   else if (smState === 'type')   drawType(smFrame);
   else if (smState === 'delete') drawDelete(smFrame);
   else if (smState === 'empty')  drawEmpty(smFrame);
-  else if (smState === 'run')    drawRun(smFrame, smRunX);
-
+  else if (smState === 'run')    drawRun(smFrame);
   smFrame++;
   if (smState === 'idle' && smEmote) smEmoteFrame++;
   requestAnimationFrame(smDraw);
 }
 smDraw();
 
-/* ─── State setter ─── */
 function setSmState(newState) {
   if (smState === newState) return;
-  smState = newState;
-  smFrame = 0;
-  smEmote = null; smEmoteFrame = 0;
-
-  clearTimeout(smWakeTimer);
-  clearTimeout(smIdleTimer);
-  clearTimeout(smEmoteTimer);
-
-  if (newState === 'wake') {
-    smWakeTimer = setTimeout(() => setSmState('idle'), 700);
-  }
-  if (newState === 'idle') {
-    scheduleEmote();
-  }
-  if (newState === 'run') {
-    smRunX = SW / 2;
-  }
+  smState = newState; smFrame = 0; smEmote = null; smEmoteFrame = 0;
+  clearTimeout(smWakeTimer); clearTimeout(smIdleTimer); clearTimeout(smEmoteTimer);
+  if (newState === 'wake') smWakeTimer = setTimeout(() => setSmState('idle'), 700);
+  if (newState === 'idle') scheduleEmote();
 }
 
 function scheduleEmote() {
   clearTimeout(smEmoteTimer);
-  const delay = 1500 + Math.random() * 2000;
+  const delay = 1500 + Math.random()*2000;
   smEmoteTimer = setTimeout(() => {
     if (smState !== 'idle') return;
     const emotes = ['look-l','look-r','wave','tap'];
-    smEmote = emotes[Math.floor(Math.random()*emotes.length)];
-    smEmoteFrame = 0;
+    smEmote = emotes[Math.floor(Math.random()*emotes.length)]; smEmoteFrame = 0;
     setTimeout(() => { smEmote = null; if (smState === 'idle') scheduleEmote(); }, 1200);
   }, delay);
 }
 
-/* ─── Run-off animation updates (called in main loop implicitly) ─── */
-let lastRunFrame = 0;
-function animateRun() {
-  if (smState !== 'run') return;
-  smRunX += 5;
-  if (smRunX > SW + 30) {
-    smRunDone = true;
-    if (pendingSearch) window.location = '/directions?q=' + encodeURIComponent(pendingSearch);
-  } else {
-    requestAnimationFrame(animateRun);
-  }
+/* ─── track position: mascot walks along the box with text length ─── */
+function getTrackBounds() {
+  const cardW = searchCard.offsetWidth;
+  const btn   = document.getElementById('searchBtn');
+  const btnW  = btn ? btn.offsetWidth : 90;
+  const min = 4;
+  const max = Math.max(min + 40, cardW - btnW - 58);
+  return { min, max };
 }
+function updateManTrack(len) {
+  const { min, max } = getTrackBounds();
+  const maxLen = 26;
+  const pct = Math.min(len / maxLen, 1);
+  smTrack.style.left = (min + pct * (max - min)) + 'px';
+}
+updateManTrack(0);
+window.addEventListener('resize', () => updateManTrack(lastInputLen));
 
 /* ═══════════════════════════════════════════════════════
    FOOTSTEP TRAIL
 ═══════════════════════════════════════════════════════ */
 const ftTrail = document.getElementById('footstepTrail');
-
 function updateFootsteps(text) {
   const len = text.length;
   if (len > lastInputLen) {
     for (let i = lastInputLen; i < Math.min(len, 32); i++) {
       const sp = document.createElement('span');
-      sp.className = 'footstep';
-      sp.textContent = '👣';
+      sp.className = 'footstep'; sp.textContent = '👣';
       sp.style.transform = i % 2 === 0 ? 'scaleX(-1)' : 'scaleX(1)';
       ftTrail.appendChild(sp);
     }
   } else {
-    for (let i = lastInputLen; i > len && ftTrail.lastChild; i--) {
-      ftTrail.removeChild(ftTrail.lastChild);
-    }
-  }
-  lastInputLen = len;
-}
-
-/* ═══════════════════════════════════════════════════════
-   BIG WALKER CANVAS (post-search full-screen run)
-═══════════════════════════════════════════════════════ */
-const wCanvas = document.getElementById('walkerCanvas');
-const wCtx    = wCanvas.getContext('2d');
-let wFrame    = 0, wX = -70, wActive = false, wAnimId = null;
-let pendingSearch = '';
-
-function resizeCanvas() { wCanvas.width = window.innerWidth; wCanvas.height = 90; }
-resizeCanvas(); window.addEventListener('resize', resizeCanvas);
-
-function drawRounded(c, x, y, w, h, r) {
-  c.beginPath(); c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.arcTo(x+w,y,x+w,y+r,r);
-  c.lineTo(x+w,y+h-r); c.arcTo(x+w,y+h,x+w-r,y+h,r); c.lineTo(x+r,y+h);
-  c.arcTo(x,y+h,x,y+h-r,r); c.lineTo(x,y+r); c.arcTo(x,y,x+r,y,r); c.closePath();
-}
-
-function drawWalkerBig(x, f) {
-  wCtx.clearRect(0, 0, wCanvas.width, wCanvas.height);
-  if (x < -70 || x > wCanvas.width + 70) return;
-  const sw = Math.sin(f*0.25)*0.52, bob = Math.abs(Math.sin(f*0.25))*4;
-  const cy = 56 - bob;
-  wCtx.save(); wCtx.translate(x, cy);
-  wCtx.fillStyle='rgba(79,70,229,0.2)'; wCtx.beginPath(); wCtx.ellipse(0,30+bob,13,3.5,0,0,Math.PI*2); wCtx.fill();
-  wCtx.save(); wCtx.fillStyle='rgba(79,70,229,0.55)'; wCtx.strokeStyle='#a5b4fc'; wCtx.lineWidth=1.5;
-  drawRounded(wCtx,3,-22,9,12,2); wCtx.fill(); wCtx.stroke(); wCtx.restore();
-  wCtx.strokeStyle='#818cf8'; wCtx.lineCap='round';
-  wCtx.save(); wCtx.lineWidth=2.6; wCtx.translate(0,10); wCtx.rotate(-sw);
-  wCtx.beginPath(); wCtx.moveTo(0,0); wCtx.lineTo(4,19); wCtx.stroke();
-  wCtx.beginPath(); wCtx.moveTo(4,19); wCtx.lineTo(10,17); wCtx.stroke(); wCtx.restore();
-  wCtx.save(); wCtx.lineWidth=2.6; wCtx.translate(0,10); wCtx.rotate(sw);
-  wCtx.beginPath(); wCtx.moveTo(0,0); wCtx.lineTo(-4,19); wCtx.stroke();
-  wCtx.beginPath(); wCtx.moveTo(-4,19); wCtx.lineTo(-10,21); wCtx.stroke(); wCtx.restore();
-  wCtx.lineWidth=2.8; wCtx.beginPath(); wCtx.moveTo(0,-22); wCtx.lineTo(0,10); wCtx.stroke();
-  wCtx.save(); wCtx.lineWidth=2.4; wCtx.translate(0,-12); wCtx.rotate(sw);
-  wCtx.beginPath(); wCtx.moveTo(0,0); wCtx.lineTo(13,12); wCtx.stroke(); wCtx.restore();
-  wCtx.save(); wCtx.lineWidth=2.4; wCtx.translate(0,-12); wCtx.rotate(-sw);
-  wCtx.beginPath(); wCtx.moveTo(0,0); wCtx.lineTo(-13,12); wCtx.stroke(); wCtx.restore();
-  wCtx.lineWidth=2.5; wCtx.beginPath(); wCtx.arc(0,-32,9,0,Math.PI*2); wCtx.stroke();
-  wCtx.fillStyle='#818cf8';
-  wCtx.beginPath(); wCtx.arc(-3,-34,1.4,0,Math.PI*2); wCtx.fill();
-  wCtx.beginPath(); wCtx.arc(3,-34,1.4,0,Math.PI*2); wCtx.fill();
-  wCtx.lineWidth=1.5; wCtx.beginPath(); wCtx.arc(0,-30,4,0.3,Math.PI-0.3); wCtx.stroke();
-  wCtx.strokeStyle='#a5b4fc'; wCtx.lineWidth=2;
-  wCtx.beginPath(); wCtx.moveTo(-8,-39); wCtx.quadraticCurveTo(0,-46,8,-39); wCtx.stroke();
-  wCtx.restore();
-  if (x > wCanvas.width - 140) {
-    const a = Math.min(1,(x-(wCanvas.width-140))/70);
-    wCtx.save(); wCtx.globalAlpha=a; wCtx.font='26px serif'; wCtx.fillText('📍',wCanvas.width-48,34); wCtx.restore();
+    for (let i = lastInputLen; i > len && ftTrail.lastChild; i--) ftTrail.removeChild(ftTrail.lastChild);
   }
 }
 
-function walkerLoop() {
-  wFrame++; wX += 5.5; drawWalkerBig(wX, wFrame);
-  if (wX < wCanvas.width + 70) wAnimId = requestAnimationFrame(walkerLoop);
-  else { wActive=false; wCtx.clearRect(0,0,wCanvas.width,wCanvas.height); if(pendingSearch) window.location='/directions?q='+encodeURIComponent(pendingSearch); }
-}
-
-function startWalker(q) {
-  if (wActive) return; wActive=true; pendingSearch=q; wX=-70; wFrame=0;
-  if (wAnimId) cancelAnimationFrame(wAnimId); walkerLoop();
-}
-
 /* ═══════════════════════════════════════════════════════
-   SEARCH LOGIC + MAN REACTIONS
+   SEARCH LOGIC + MASCOT REACTIONS
 ═══════════════════════════════════════════════════════ */
-const input    = document.getElementById('homeSearch');
-const box      = document.getElementById('homeSuggestions');
+const input       = document.getElementById('homeSearch');
+const box         = document.getElementById('homeSuggestions');
 const placeholder = document.getElementById('sPlaceholder');
 
-/* focus / blur → placeholder hides */
 input.addEventListener('focus', () => {
   placeholder.classList.add('hidden');
   if (smState === 'sleep') setSmState('wake');
-  document.getElementById('searchCard').classList.add('focused');
+  searchCard.classList.add('focused');
 });
 input.addEventListener('blur', () => {
   if (!input.value.trim()) {
     placeholder.classList.remove('hidden');
     setTimeout(() => { if (smState === 'idle' && !input.value.trim()) setSmState('sleep'); }, 3000);
   }
-  document.getElementById('searchCard').classList.remove('focused');
+  searchCard.classList.remove('focused');
 });
 
 let deleteDebounce = null;
-input.addEventListener('input', function (e) {
-  const val = this.value;
-  const len = val.length;
+input.addEventListener('input', function () {
+  const val = this.value, len = val.length;
   updateFootsteps(val);
+  updateManTrack(len);
 
-  if (len > lastInputLen - 1) {
-    /* typing */
+  if (len > lastInputLen) {
     clearTimeout(deleteDebounce);
     setSmState('type');
-    /* return to idle if no more typing */
     clearTimeout(smIdleTimer);
     smIdleTimer = setTimeout(() => { if (smState === 'type') setSmState('idle'); }, 800);
+  } else if (len === 0) {
+    setSmState('empty');
+    setTimeout(() => { if (smState === 'empty') setSmState('idle'); }, 1800);
   } else {
-    /* deleting */
-    if (len === 0) {
-      setSmState('empty');
-      setTimeout(() => { if (smState === 'empty') setSmState('idle'); }, 1800);
-    } else {
-      setSmState('delete');
-      clearTimeout(deleteDebounce);
-      deleteDebounce = setTimeout(() => { if (smState === 'delete') setSmState('idle'); }, 600);
-    }
+    setSmState('delete');
+    clearTimeout(deleteDebounce);
+    deleteDebounce = setTimeout(() => { if (smState === 'delete') setSmState('idle'); }, 600);
   }
   lastInputLen = len;
 
-  /* suggestions */
   if (!val) { box.style.display='none'; box.innerHTML=''; return; }
   fetch('/suggest?q=' + encodeURIComponent(val))
     .then(r => r.json())
@@ -717,15 +528,19 @@ function triggerSearch(term) {
   btn.querySelector('.btn-label').textContent = '→→→';
   box.style.display = 'none';
   setSmState('run');
-  smRunX = SW / 2;
-  pendingSearch = val;
-  (function runOff() {
-    if (smRunX < SW + 40) { smRunX += 5; setTimeout(runOff, 16); }
-    else { setTimeout(() => startWalker(val), 100); }
+
+  const { max } = getTrackBounds();
+  const cardW = searchCard.offsetWidth;
+  let leftPx = parseFloat(smTrack.style.left) || max;
+  (function runFast() {
+    leftPx += 16;
+    smTrack.style.left = leftPx + 'px';
+    if (leftPx < cardW - 10) requestAnimationFrame(runFast);
+    else setTimeout(() => { window.location = '/directions?q=' + encodeURIComponent(val); }, 180);
   })();
 }
 
-function quickSearch(t) { input.value = t; updateFootsteps(t); lastInputLen = t.length; triggerSearch(t); }
+function quickSearch(t) { input.value = t; updateFootsteps(t); updateManTrack(t.length); lastInputLen = t.length; triggerSearch(t); }
 input.addEventListener('keypress', e => { if (e.key === 'Enter') triggerSearch(); });
 document.addEventListener('click', e => {
   if (!document.querySelector('.search-outer').contains(e.target)) box.style.display = 'none';

@@ -1,0 +1,1 @@
+- [Canvas rotating globe](canvas-rotating-globe.md) — static container + orthographic per-frame projection makes a globe look alive without moving it.
