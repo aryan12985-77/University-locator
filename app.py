@@ -42,8 +42,10 @@ def directions():
                image, instructions, entry_lat, entry_lng
         FROM locations
         WHERE LOWER(name) LIKE '%' || LOWER(?) || '%'
+           OR LOWER(keywords) LIKE '%' || LOWER(?) || '%'
+           OR LOWER(building) LIKE '%' || LOWER(?) || '%'
         LIMIT 1
-    """, (query,)).fetchone()
+    """, (query, query, query)).fetchone()
     conn.close()
 
     location = dict(row) if row else None
@@ -68,8 +70,10 @@ def search_location():
                image, instructions, entry_lat, entry_lng
         FROM locations
         WHERE LOWER(name) LIKE '%' || LOWER(?) || '%'
+           OR LOWER(keywords) LIKE '%' || LOWER(?) || '%'
+           OR LOWER(building) LIKE '%' || LOWER(?) || '%'
         LIMIT 1
-    """, (query,)).fetchone()
+    """, (query, query, query)).fetchone()
     conn.close()
 
     if row:
@@ -86,8 +90,10 @@ def suggest():
     rows = conn.execute("""
         SELECT name FROM locations
         WHERE LOWER(name) LIKE '%' || LOWER(?) || '%'
-        LIMIT 6
-    """, (query,)).fetchall()
+           OR LOWER(keywords) LIKE '%' || LOWER(?) || '%'
+           OR LOWER(building) LIKE '%' || LOWER(?) || '%'
+        LIMIT 8
+    """, (query, query, query)).fetchall()
     conn.close()
 
     return jsonify([row["name"] for row in rows])
@@ -104,8 +110,8 @@ def sync_json_to_db():
     for loc in data:
         cursor.execute("""
         INSERT OR REPLACE INTO locations
-        (name, building, floor, lat, lng, type, image, instructions, entry_lat, entry_lng)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (name, building, floor, lat, lng, type, image, instructions, entry_lat, entry_lng, keywords)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             loc.get("name"),
             loc.get("building"),
@@ -117,6 +123,7 @@ def sync_json_to_db():
             loc.get("instructions", ""),
             loc.get("entry_lat", loc.get("lat")),
             loc.get("entry_lng", loc.get("lng")),
+            loc.get("keywords", ""),
         ))
 
     conn.commit()

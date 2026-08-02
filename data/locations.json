@@ -4,183 +4,670 @@
     "building": "Sports Area",
     "floor": "Ground",
     "lat": 26.812312,
-    "lng": 75.892432
+    "lng": 75.892432,
+    "type": "sports",
+    "keywords": "cricket sports ground play field"
   },
   {
     "name": "Tech Lawn",
     "building": "Tech Area",
     "floor": "Ground",
     "lat": 26.812902,
-    "lng": 75.893733
+    "lng": 75.893733,
+    "type": "general",
+    "keywords": "lawn garden sitting open area tech"
   },
   {
     "name": "Basketball Court",
     "building": "Sports Area",
     "floor": "Ground",
     "lat": 26.812865,
-    "lng": 75.893415
+    "lng": 75.893415,
+    "type": "sports",
+    "keywords": "basketball court sports play hoops"
   },
   {
     "name": "Parking Area",
     "building": "Campus Parking",
     "floor": "Ground",
     "lat": 26.812899,
-    "lng": 75.892949
+    "lng": 75.892949,
+    "type": "general",
+    "keywords": "parking vehicle bike car two wheeler four wheeler"
   },
   {
     "name": "Gate 1",
     "building": "Main Gate",
     "floor": "Ground",
     "lat": 26.812677,
-    "lng": 75.894521
+    "lng": 75.894521,
+    "type": "gate",
+    "keywords": "main gate entry entrance exit gate1 one"
   },
   {
     "name": "Football Ground",
     "building": "Sports Area",
     "floor": "Ground",
     "lat": 26.812581,
-    "lng": 75.894367
+    "lng": 75.894367,
+    "type": "sports",
+    "keywords": "football ground soccer sports play field"
   },
   {
     "name": "Gate 1 Security",
     "building": "Security",
     "floor": "Ground",
     "lat": 26.812713,
-    "lng": 75.894570
+    "lng": 75.894570,
+    "type": "gate",
+    "keywords": "security guard gate1 main gate entry"
   },
   {
     "name": "Agriculture Area",
     "building": "Cultural Area",
     "floor": "Ground",
     "lat": 26.811320,
-    "lng": 75.893932
+    "lng": 75.893932,
+    "type": "general",
+    "keywords": "agriculture farm cultural garden plants"
   },
   {
     "name": "Admin Block",
     "building": "Admin Block",
     "floor": "Multiple",
     "lat": 26.812465,
-    "lng": 75.891278
+    "lng": 75.891278,
+    "type": "building",
+    "keywords": "admin administration office management block"
   },
   {
     "name": "Mess",
     "building": "Mess Block",
     "floor": "Multiple",
     "lat": 26.811383,
-    "lng": 75.891656
+    "lng": 75.891656,
+    "type": "food",
+    "keywords": "mess food canteen eat lunch dinner breakfast dining hall"
   },
   {
     "name": "Narayana Hostel",
     "building": "Hostel",
     "floor": "Multiple",
     "lat": 26.810992,
-    "lng": 75.892528
+    "lng": 75.892528,
+    "type": "hostel",
+    "keywords": "narayana hostel boys room stay accommodation"
   },
   {
     "name": "Hostel Lawn",
     "building": "Hostel Area",
     "floor": "Ground",
     "lat": 26.811147,
-    "lng": 75.891933
+    "lng": 75.891933,
+    "type": "hostel",
+    "keywords": "hostel lawn garden open area sitting"
   },
   {
     "name": "Shingar I",
     "building": "Hostel",
     "floor": "Multiple",
     "lat": 26.811459,
-    "lng": 75.891742
+    "lng": 75.891742,
+    "type": "hostel",
+    "keywords": "shingar hostel 1 boys room stay accommodation"
   },
   {
     "name": "Shingar II",
     "building": "Hostel",
     "floor": "Multiple",
     "lat": 26.810891,
-    "lng": 75.891965
+    "lng": 75.891965,
+    "type": "hostel",
+    "keywords": "shingar hostel 2 boys room stay accommodation"
   },
   {
     "name": "Academic Block",
     "building": "Academic Block",
     "floor": "Multiple",
     "lat": 26.811171,
-    "lng": 75.889791
+    "lng": 75.889791,
+    "type": "building",
+    "keywords": "academic block classroom lectures study"
   },
   {
     "name": "Gate 3",
     "building": "Gate",
     "floor": "Ground",
     "lat": 26.812604,
-    "lng": 75.888329
+    "lng": 75.888329,
+    "type": "gate",
+    "keywords": "gate 3 three entry exit side gate"
   },
   {
     "name": "Hostel 1.19",
     "building": "Hostel",
     "floor": "Multiple",
     "lat": 26.811511,
-    "lng": 75.885230
+    "lng": 75.885230,
+    "type": "hostel",
+    "keywords": "hostel 1.19 boys room accommodation stay"
   },
   {
     "name": "American Football Ground",
     "building": "Sports Area",
     "floor": "Ground",
     "lat": 26.812348,
-    "lng": 75.890635
+    "lng": 75.890635,
+    "type": "sports",
+    "keywords": "american football ground sports play field"
   },
   {
     "name": "Gate 4",
     "building": "Gate",
     "floor": "Ground",
     "lat": 26.813067,
-    "lng": 75.891446
+    "lng": 75.891446,
+    "type": "gate",
+    "keywords": "gate 4 four entry exit back gate"
   },
   {
     "name": "New Building",
     "building": "Academic Area",
     "floor": "Multiple",
     "lat": 26.811729,
-    "lng": 75.892559
+    "lng": 75.892559,
+    "type": "building",
+    "keywords": "new building academic block classrooms"
   },
   {
     "name": "Girls Hostel",
     "building": "Hostel",
     "floor": "Multiple",
     "lat": 26.811640,
-    "lng": 75.893218
-  }, 
-  
+    "lng": 75.893218,
+    "type": "hostel",
+    "keywords": "girls hostel women ladies room accommodation stay"
+  },
+
   {
-  "name": "Tech Block",
-  "building": "Tech Block",
-  "floor": "Multiple",
-  "lat": 26.812055,
-  "lng": 75.893885,
-  "type": "building",
-  "entry_lat": 26.812020,
-  "entry_lng": 75.893800
-},
+    "name": "Tech Block",
+    "building": "Tech Block",
+    "floor": "Multiple",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "building",
+    "keywords": "tech block technology building main departments labs"
+  },
 
-{
-  "name": "Auditorium",
-  "building": "Tech Block",
-  "floor": "1st Floor",
-  "lat": 26.812060,
-  "lng": 75.893890,
-  "entry_lat": 26.812020,
-  "entry_lng": 75.893800,
-  "type": "room",
-  "image": "/static/images/auditorium.jpg",
-  "instructions": "Enter Tech Block, go to 1st floor using stairs or lift, walk straight through corridor, auditorium will be on right side."
-},
+  {
+    "name": "Auditorium",
+    "building": "Tech Block",
+    "floor": "1st Floor",
+    "lat": 26.812060,
+    "lng": 75.893890,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "image": "/static/images/auditorium.jpg",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 1st floor. Walk straight through the main corridor — the Auditorium will be on your right side.",
+    "keywords": "auditorium hall seminar event conference audi"
+  },
 
-{
-  "name": "CSE Department",
-  "building": "Tech Block",
-  "floor": "2nd Floor",
-  "lat": 26.812070,
-  "lng": 75.893900,
-  "entry_lat": 26.812020,
-  "entry_lng": 75.893800,
-  "type": "department",
-  "image": "/static/images/cse_department.jpg",
-  "instructions": "Go to 2nd floor, turn left from stairs, CSE department is at the end of the corridor."
-}
+  {
+    "name": "Library",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. The Library is on the Ground Floor — turn left immediately after the entrance, it is the large room at the end of the left corridor.",
+    "keywords": "library lib books reading room study reference journals newspaper"
+  },
+
+  {
+    "name": "Payment Office",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. The Payment Office (Fee Counter) is on the Ground Floor — turn right after the entrance, it is the second door on the right side of the corridor.",
+    "keywords": "payment office fee fees counter accounts finance challan due receipt scholarship exam form admission"
+  },
+
+  {
+    "name": "Civil Department",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "department",
+    "instructions": "Enter Tech Block from the main entrance. The Civil Engineering Department is on the Ground Floor — go straight ahead and it is at the far end of the corridor on the left side.",
+    "keywords": "civil engineering department CE civil engg structure construction"
+  },
+
+  {
+    "name": "Mechanical Department",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "department",
+    "instructions": "Enter Tech Block from the main entrance. The Mechanical Engineering Department is on the Ground Floor — turn right, walk to the end of the corridor, the Mechanical Department is on your right.",
+    "keywords": "mechanical engineering department ME mech automobile manufacturing"
+  },
+
+  {
+    "name": "Mechanical Lab",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. The Mechanical Lab is on the Ground Floor — turn right at the entrance, walk past the Mechanical Department, the lab is the last room on the right side.",
+    "keywords": "mechanical lab workshop lathe machine tools fitting practical mech"
+  },
+
+  {
+    "name": "Classroom G-01",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Classroom G-01 is on the Ground Floor — it is the first classroom on the left side of the main corridor.",
+    "keywords": "classroom G01 G-01 ground floor lecture room class"
+  },
+
+  {
+    "name": "Classroom G-02",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Classroom G-02 is on the Ground Floor — it is the second classroom on the left side of the main corridor.",
+    "keywords": "classroom G02 G-02 ground floor lecture room class"
+  },
+
+  {
+    "name": "Classroom G-03",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Classroom G-03 is on the Ground Floor — it is the third classroom on the left side of the main corridor.",
+    "keywords": "classroom G03 G-03 ground floor lecture room class"
+  },
+
+  {
+    "name": "Classroom G-04",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Classroom G-04 is on the Ground Floor — it is the fourth classroom on the left side of the main corridor.",
+    "keywords": "classroom G04 G-04 ground floor lecture room class"
+  },
+
+  {
+    "name": "Classroom G-05",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Classroom G-05 is on the Ground Floor — it is the fifth classroom on the left side of the main corridor.",
+    "keywords": "classroom G05 G-05 ground floor lecture room class"
+  },
+
+  {
+    "name": "Classroom G-06",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Classroom G-06 is on the Ground Floor — it is the sixth classroom on the left side of the main corridor.",
+    "keywords": "classroom G06 G-06 ground floor lecture room class"
+  },
+
+  {
+    "name": "LT-101",
+    "building": "Tech Block",
+    "floor": "1st Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 1st floor. LT-101 is the first lecture theatre on the left side of the corridor.",
+    "keywords": "LT101 LT-101 lecture theatre first floor classroom room 101"
+  },
+
+  {
+    "name": "LT-102",
+    "building": "Tech Block",
+    "floor": "1st Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 1st floor. LT-102 is the second lecture theatre on the left side of the corridor.",
+    "keywords": "LT102 LT-102 lecture theatre first floor classroom room 102"
+  },
+
+  {
+    "name": "LT-103",
+    "building": "Tech Block",
+    "floor": "1st Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 1st floor. LT-103 is the third lecture theatre on the left side of the corridor.",
+    "keywords": "LT103 LT-103 lecture theatre first floor classroom room 103"
+  },
+
+  {
+    "name": "LT-104",
+    "building": "Tech Block",
+    "floor": "1st Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 1st floor. LT-104 is the fourth lecture theatre on the right side of the corridor.",
+    "keywords": "LT104 LT-104 lecture theatre first floor classroom room 104"
+  },
+
+  {
+    "name": "LT-105",
+    "building": "Tech Block",
+    "floor": "1st Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 1st floor. LT-105 is the fifth lecture theatre on the right side of the corridor.",
+    "keywords": "LT105 LT-105 lecture theatre first floor classroom room 105"
+  },
+
+  {
+    "name": "LT-106",
+    "building": "Tech Block",
+    "floor": "1st Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 1st floor. LT-106 is at the far end of the 1st floor corridor on the right side.",
+    "keywords": "LT106 LT-106 lecture theatre first floor classroom room 106"
+  },
+
+  {
+    "name": "CSE Department",
+    "building": "Tech Block",
+    "floor": "2nd Floor",
+    "lat": 26.812070,
+    "lng": 75.893900,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "department",
+    "image": "/static/images/cse_department.jpg",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 2nd floor. Turn left from the stairs — the CSE Department is at the end of the corridor on the left side.",
+    "keywords": "CSE computer science engineering department CS IT software programming coding"
+  },
+
+  {
+    "name": "LT-201",
+    "building": "Tech Block",
+    "floor": "2nd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 2nd floor. LT-201 is the first lecture theatre on the left side of the corridor.",
+    "keywords": "LT201 LT-201 lecture theatre second floor classroom room 201"
+  },
+
+  {
+    "name": "LT-202",
+    "building": "Tech Block",
+    "floor": "2nd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 2nd floor. LT-202 is the second lecture theatre on the left side of the corridor.",
+    "keywords": "LT202 LT-202 lecture theatre second floor classroom room 202"
+  },
+
+  {
+    "name": "LT-203",
+    "building": "Tech Block",
+    "floor": "2nd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 2nd floor. LT-203 is the third lecture theatre on the right side of the corridor.",
+    "keywords": "LT203 LT-203 lecture theatre second floor classroom room 203"
+  },
+
+  {
+    "name": "LT-204",
+    "building": "Tech Block",
+    "floor": "2nd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 2nd floor. LT-204 is the fourth lecture theatre on the right side of the corridor.",
+    "keywords": "LT204 LT-204 lecture theatre second floor classroom room 204"
+  },
+
+  {
+    "name": "LT-205",
+    "building": "Tech Block",
+    "floor": "2nd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 2nd floor. LT-205 is the fifth lecture theatre at the far end of the 2nd floor corridor.",
+    "keywords": "LT205 LT-205 lecture theatre second floor classroom room 205"
+  },
+
+  {
+    "name": "Computer Lab",
+    "building": "Tech Block",
+    "floor": "2nd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 2nd floor. Turn right from the stairs — the Computer Lab is the large room on the right side near the CSE Department.",
+    "keywords": "computer lab programming coding practical PC systems lab CSE IT software internet"
+  },
+
+  {
+    "name": "LT-301",
+    "building": "Tech Block",
+    "floor": "3rd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 3rd floor. LT-301 is the first lecture theatre on the left side of the corridor.",
+    "keywords": "LT301 LT-301 lecture theatre third floor classroom room 301"
+  },
+
+  {
+    "name": "LT-302",
+    "building": "Tech Block",
+    "floor": "3rd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 3rd floor. LT-302 is the second lecture theatre on the left side of the corridor.",
+    "keywords": "LT302 LT-302 lecture theatre third floor classroom room 302"
+  },
+
+  {
+    "name": "LT-303",
+    "building": "Tech Block",
+    "floor": "3rd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 3rd floor. LT-303 is the third lecture theatre on the right side of the corridor.",
+    "keywords": "LT303 LT-303 lecture theatre third floor classroom room 303"
+  },
+
+  {
+    "name": "LT-304",
+    "building": "Tech Block",
+    "floor": "3rd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 3rd floor. LT-304 is the fourth lecture theatre on the right side of the corridor.",
+    "keywords": "LT304 LT-304 lecture theatre third floor classroom room 304"
+  },
+
+  {
+    "name": "LT-305",
+    "building": "Tech Block",
+    "floor": "3rd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 3rd floor. LT-305 is the fifth lecture theatre at the far end of the 3rd floor corridor on the right.",
+    "keywords": "LT305 LT-305 lecture theatre third floor classroom room 305"
+  },
+
+  {
+    "name": "ECE Department",
+    "building": "Tech Block",
+    "floor": "3rd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "department",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 3rd floor. Turn right from the stairs — the ECE Department is at the end of the corridor on the right side.",
+    "keywords": "ECE electronics communication engineering department electrical circuits"
+  },
+
+  {
+    "name": "Electronics Lab",
+    "building": "Tech Block",
+    "floor": "3rd Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. Take the stairs or lift to the 3rd floor. The Electronics Lab is next to the ECE Department at the far end of the corridor.",
+    "keywords": "electronics lab ECE practical circuits boards components resistors"
+  },
+
+  {
+    "name": "Director Office",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. The Director's Office is on the Ground Floor — it is the first door on the right side immediately after the main entrance.",
+    "keywords": "director office principal head sir management authority"
+  },
+
+  {
+    "name": "Exam Cell",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. The Exam Cell is on the Ground Floor — turn right, walk halfway down the corridor, it is on the right side.",
+    "keywords": "exam cell examination form result marksheet admit card hall ticket paper"
+  },
+
+  {
+    "name": "Student Affairs Office",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. The Student Affairs Office is on the Ground Floor — turn left, it is the second room on the left side of the corridor.",
+    "keywords": "student affairs office welfare activity club certificate bonafide NOC"
+  },
+
+  {
+    "name": "Reprographics / Photocopy",
+    "building": "Tech Block",
+    "floor": "Ground Floor",
+    "lat": 26.812055,
+    "lng": 75.893885,
+    "entry_lat": 26.812020,
+    "entry_lng": 75.893800,
+    "type": "room",
+    "instructions": "Enter Tech Block from the main entrance. The Reprographics / Photocopy shop is on the Ground Floor near the main entrance — it is on the left side just after you enter.",
+    "keywords": "photocopy xerox print reprographics copy scan stationary notes printout"
+  }
 ]
