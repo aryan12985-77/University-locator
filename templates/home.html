@@ -40,6 +40,7 @@
   </div>
 
   <div class="hero">
+    <div class="hero-aurora"></div>
 
     <div class="hero-badge a1"><span class="badge-dot"></span>🎓 Smart Campus Guide</div>
 
@@ -86,18 +87,80 @@
     </a>
 
     <div class="categories a5">
-      <div class="cat-chip" onclick="quickSearch('Cricket Ground')">⚽ Sports</div>
-      <div class="cat-chip" onclick="quickSearch('Canteen')">🍽 Canteen</div>
-      <div class="cat-chip" onclick="quickSearch('Library')">📚 Library</div>
-      <div class="cat-chip" onclick="quickSearch('Medical')">🏥 Medical</div>
-      <div class="cat-chip" onclick="quickSearch('Admin')">🏛 Admin</div>
-      <div class="cat-chip" onclick="quickSearch('Parking')">🚗 Parking</div>
+      <div class="cat-chip chip-sports"  onclick="quickSearch('Cricket Ground')">⚽ Sports</div>
+      <div class="cat-chip chip-food"    onclick="quickSearch('Mess')">🍽 Food</div>
+      <div class="cat-chip chip-library" onclick="quickSearch('Library')">📚 Library</div>
+      <div class="cat-chip chip-medical" onclick="quickSearch('Medical')">🏥 Medical</div>
+      <div class="cat-chip chip-admin"   onclick="quickSearch('Admin Block')">🏛 Admin</div>
+      <div class="cat-chip chip-parking" onclick="quickSearch('Parking')">🚗 Parking</div>
     </div>
 
-    <div class="stats-bar a5">
-      <div class="stat"><div class="num count-up" data-target="25">0</div><div class="lbl">Locations</div></div>
-      <div class="stat"><div class="num count-up" data-target="10">0</div><div class="lbl">Buildings</div></div>
-      <div class="stat"><div class="num">Live</div><div class="lbl">GPS Routing</div></div>
+    <!-- POPULAR PLACES -->
+    <div class="popular-wrap a5">
+      <div class="popular-label">🔥 Popular Places</div>
+      <div class="popular-scroll">
+        <div class="pop-card" onclick="quickSearch('Library')">
+          <div class="pop-icon" style="background:linear-gradient(135deg,#0ea5e9,#06b6d4)">📚</div>
+          <div class="pop-name">Library</div>
+          <div class="pop-sub">Ground Floor</div>
+        </div>
+        <div class="pop-card" onclick="quickSearch('CSE Department')">
+          <div class="pop-icon" style="background:linear-gradient(135deg,#4f46e5,#818cf8)">💻</div>
+          <div class="pop-name">CSE Dept</div>
+          <div class="pop-sub">2nd Floor</div>
+        </div>
+        <div class="pop-card" onclick="quickSearch('Auditorium')">
+          <div class="pop-icon" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">🎭</div>
+          <div class="pop-name">Auditorium</div>
+          <div class="pop-sub">1st Floor</div>
+        </div>
+        <div class="pop-card" onclick="quickSearch('Mess')">
+          <div class="pop-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">🍽</div>
+          <div class="pop-name">Mess</div>
+          <div class="pop-sub">Mess Block</div>
+        </div>
+        <div class="pop-card" onclick="quickSearch('Payment Office')">
+          <div class="pop-icon" style="background:linear-gradient(135deg,#10b981,#34d399)">💳</div>
+          <div class="pop-name">Fee Counter</div>
+          <div class="pop-sub">Ground Floor</div>
+        </div>
+        <div class="pop-card" onclick="quickSearch('Cricket Ground')">
+          <div class="pop-icon" style="background:linear-gradient(135deg,#059669,#10b981)">🏏</div>
+          <div class="pop-name">Cricket</div>
+          <div class="pop-sub">Sports Area</div>
+        </div>
+        <div class="pop-card" onclick="quickSearch('Exam Cell')">
+          <div class="pop-icon" style="background:linear-gradient(135deg,#dc2626,#f87171)">📋</div>
+          <div class="pop-name">Exam Cell</div>
+          <div class="pop-sub">Ground Floor</div>
+        </div>
+        <div class="pop-card" onclick="quickSearch('Gate 1')">
+          <div class="pop-icon" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🚪</div>
+          <div class="pop-name">Gate 1</div>
+          <div class="pop-sub">Main Entrance</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS BAR -->
+    <div class="stats-glass a5">
+      <div class="stat-item">
+        <div class="stat-icon">📍</div>
+        <div class="stat-num count-up" data-target="60">0</div>
+        <div class="stat-lbl">Locations</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-icon">🏗</div>
+        <div class="stat-num count-up" data-target="12">0</div>
+        <div class="stat-lbl">Buildings</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-icon">📡</div>
+        <div class="stat-num">Live</div>
+        <div class="stat-lbl">GPS Tracking</div>
+      </div>
     </div>
 
   </div>
@@ -549,9 +612,14 @@ document.addEventListener('click', e => {
 /* Count-up stats */
 function countUp(el) {
   const t = +el.dataset.target; let cur = 0;
-  const timer = setInterval(() => { cur=Math.min(cur+1,t); el.textContent=cur+'+'; if(cur>=t) clearInterval(timer); }, 60);
+  const step = Math.max(1, Math.floor(t / 40));
+  const timer = setInterval(() => {
+    cur = Math.min(cur + step, t);
+    el.textContent = cur + '+';
+    if (cur >= t) clearInterval(timer);
+  }, 40);
 }
-setTimeout(() => document.querySelectorAll('.count-up').forEach(countUp), 600);
+setTimeout(() => document.querySelectorAll('.stat-num.count-up').forEach(countUp), 700);
 </script>
 </body>
 </html>

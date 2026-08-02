@@ -1259,3 +1259,219 @@ input.shake { animation: shake 0.4s ease; }
   .hero { padding: 40px 32px 64px; }
   .results-body { padding: 32px 24px 60px; }
 }
+
+/* ============================================================
+   CATEGORY CHIPS — PER-TYPE ACCENT COLORS
+   ============================================================ */
+.chip-sports:hover  { background: rgba(16,185,129,0.22) !important; border-color: rgba(16,185,129,0.55) !important; color: #6ee7b7 !important; box-shadow: 0 6px 18px rgba(16,185,129,0.2) !important; }
+.chip-food:hover    { background: rgba(245,158,11,0.22) !important; border-color: rgba(245,158,11,0.55) !important; color: #fcd34d !important; box-shadow: 0 6px 18px rgba(245,158,11,0.2) !important; }
+.chip-library:hover { background: rgba(6,182,212,0.22)  !important; border-color: rgba(6,182,212,0.55)  !important; color: #67e8f9 !important; box-shadow: 0 6px 18px rgba(6,182,212,0.2)  !important; }
+.chip-medical:hover { background: rgba(239,68,68,0.22)  !important; border-color: rgba(239,68,68,0.55)  !important; color: #fca5a5 !important; box-shadow: 0 6px 18px rgba(239,68,68,0.2)  !important; }
+.chip-admin:hover   { background: rgba(124,58,237,0.22) !important; border-color: rgba(124,58,237,0.55) !important; color: #c4b5fd !important; box-shadow: 0 6px 18px rgba(124,58,237,0.2) !important; }
+.chip-parking:hover { background: rgba(234,179,8,0.22)  !important; border-color: rgba(234,179,8,0.55)  !important; color: #fde047 !important; box-shadow: 0 6px 18px rgba(234,179,8,0.2)  !important; }
+
+/* ============================================================
+   POPULAR PLACES SECTION
+   ============================================================ */
+.popular-wrap {
+  width: 100%;
+  max-width: 540px;
+  margin-bottom: 28px;
+}
+.popular-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.popular-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+}
+.popular-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.popular-scroll::-webkit-scrollbar { display: none; }
+
+.pop-card {
+  flex-shrink: 0;
+  width: 88px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 16px;
+  padding: 14px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+  animation: fadeUp 0.5s ease both;
+  position: relative;
+  overflow: hidden;
+}
+.pop-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.04), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.pop-card:hover {
+  transform: translateY(-5px) scale(1.04);
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+  background: rgba(255,255,255,0.09);
+}
+.pop-card:hover::before { opacity: 1; }
+.pop-card:active { transform: scale(0.96); }
+
+.pop-icon {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+.pop-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pop-sub {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   STATS GLASS CARD
+   ============================================================ */
+.stats-glass {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 20px;
+  padding: 16px 24px;
+  max-width: 380px;
+  width: 100%;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.stat-icon {
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+  filter: drop-shadow(0 0 6px rgba(79,70,229,0.5));
+}
+.stat-num {
+  font-size: 1.3rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--primary-light), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+.stat-lbl {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.stat-divider {
+  width: 1px;
+  height: 40px;
+  background: rgba(255,255,255,0.08);
+  margin: 0 8px;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   HERO AURORA GLOW
+   ============================================================ */
+.hero-aurora {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  width: 600px;
+  height: 300px;
+  background: radial-gradient(ellipse at center,
+    rgba(79,70,229,0.18) 0%,
+    rgba(6,182,212,0.10) 40%,
+    transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(30px);
+  animation: auroraPulse 6s ease-in-out infinite alternate;
+}
+@keyframes auroraPulse {
+  from { opacity: 0.7; transform: translate(-50%,-60%) scale(1); }
+  to   { opacity: 1;   transform: translate(-50%,-65%) scale(1.12); }
+}
+
+/* ============================================================
+   NEAR ME BUTTON — enhanced glow on hover
+   ============================================================ */
+.near-me-btn:hover {
+  box-shadow: 0 8px 32px rgba(79,70,229,0.35), 0 0 0 1px rgba(79,70,229,0.5) !important;
+}
+
+/* ============================================================
+   POP CARD STAGGER DELAYS
+   ============================================================ */
+.popular-scroll .pop-card:nth-child(1) { animation-delay: 0.05s; }
+.popular-scroll .pop-card:nth-child(2) { animation-delay: 0.10s; }
+.popular-scroll .pop-card:nth-child(3) { animation-delay: 0.15s; }
+.popular-scroll .pop-card:nth-child(4) { animation-delay: 0.20s; }
+.popular-scroll .pop-card:nth-child(5) { animation-delay: 0.25s; }
+.popular-scroll .pop-card:nth-child(6) { animation-delay: 0.30s; }
+.popular-scroll .pop-card:nth-child(7) { animation-delay: 0.35s; }
+.popular-scroll .pop-card:nth-child(8) { animation-delay: 0.40s; }
+
+/* ============================================================
+   RESPONSIVE — POPULAR + STATS
+   ============================================================ */
+@media (max-width: 540px) {
+  .pop-card { width: 78px; padding: 12px 8px 10px; }
+  .pop-icon { width: 36px; height: 36px; font-size: 1.1rem; border-radius: 10px; }
+  .stats-glass { padding: 14px 16px; max-width: 100%; }
+  .stat-num { font-size: 1.1rem; }
+  .hero-aurora { width: 340px; height: 200px; }
+}
