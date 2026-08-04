@@ -71,13 +71,12 @@
   const T = {
     bgFade   : [0.0,  0.6],
     pinDrop  : [0.6,  1.8],
-    rings    : [1.6,  9.0],   // ongoing pulses
+    rings    : [1.6,  8.0],   // ongoing pulses
     roads    : [2.0,  5.2],   // staggered; each road takes 0.7 s to draw
     buildings: [2.5,  5.8],   // appear after their road finishes
-    dots     : [4.5,  8.2],
-    text     : [5.8,  7.4],
-    radar    : [7.2,  8.2],
-    fadeOut  : [8.4,  9.4],
+    dots     : [4.5,  7.0],
+    radar    : [5.8,  7.0],
+    fadeOut  : [7.2,  8.2],
   };
 
   /* ── computed road endpoints (recalculated each frame) ── */
@@ -323,67 +322,7 @@
       }
     }
 
-    /* ── 6. TITLE TEXT ── */
-    {
-      const textP = prog(t, ...T.text);
-      if (textP > 0) {
-        /* dark pill behind text */
-        const pillW = Math.min(W * 0.7, 480), pillH = 110;
-        ctx.save();
-        ctx.globalAlpha = eIO(textP) * 0.85;
-        ctx.fillStyle   = rgba('#060d1a', 0.9);
-        ctx.beginPath();
-        ctx.roundRect(CX - pillW/2, CY - pillH/2 - 10, pillW, pillH, 18);
-        ctx.fill();
-        ctx.restore();
-
-        /* CAMPUS NAVIGATOR */
-        const fs = clamp(Math.round(W * 0.055), 20, 52);
-        ctx.save();
-        ctx.globalAlpha = eIO(textP);
-        ctx.textAlign   = 'center';
-
-        const tGrad = ctx.createLinearGradient(CX - 200, 0, CX + 200, 0);
-        tGrad.addColorStop(0,   '#ffffff');
-        tGrad.addColorStop(0.4, '#c7d2fe');
-        tGrad.addColorStop(0.8, '#67e8f9');
-        tGrad.addColorStop(1,   '#818cf8');
-
-        ctx.font        = `800 ${fs}px Poppins,sans-serif`;
-        ctx.shadowBlur  = 22; ctx.shadowColor = rgba(C.indigo, 0.8);
-        ctx.fillStyle   = tGrad;
-        ctx.fillText('CAMPUS NAVIGATOR', CX, CY + fs * 0.35);
-        ctx.shadowBlur  = 0;
-
-        /* VGU sub-line */
-        const subP = prog(t, T.text[0] + 0.6, T.text[1]);
-        if (subP > 0) {
-          ctx.globalAlpha = eIO(subP);
-          ctx.font        = `500 ${Math.round(fs * 0.36)}px Poppins,sans-serif`;
-          ctx.fillStyle   = C.muted;
-          ctx.fillText('VGU, JAIPUR  ·  Smart Campus Guide', CX, CY + fs * 1.1);
-        }
-
-        /* scanning underline */
-        const lineP = prog(t, T.text[0], T.text[1]);
-        const lineW = fs * 9.2;
-        ctx.globalAlpha = 0.7 * eIO(lineP);
-        const lineGrd   = ctx.createLinearGradient(CX - lineW/2, 0, CX + lineW/2, 0);
-        lineGrd.addColorStop(0, 'transparent');
-        lineGrd.addColorStop(0.5, C.cyan);
-        lineGrd.addColorStop(1, 'transparent');
-        ctx.strokeStyle = lineGrd;
-        ctx.lineWidth   = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(CX - lineW/2, CY + fs * 0.6);
-        ctx.lineTo(CX + lineW/2, CY + fs * 0.6);
-        ctx.stroke();
-
-        ctx.restore();
-      }
-    }
-
-    /* ── 7. RADAR SWEEP ── */
+    /* ── 6. RADAR SWEEP ── */
     {
       const rp = prog(t, ...T.radar);
       if (rp > 0) {
@@ -425,7 +364,7 @@
       }
     }
 
-    /* ── 8. FADE OUT ── */
+    /* ── 7. FADE OUT ── */
     {
       const fo = prog(t, ...T.fadeOut);
       if (fo > 0) {
@@ -433,6 +372,7 @@
         if (fo >= 1) {
           overlay.style.display = 'none';
           done = true;
+          document.dispatchEvent(new CustomEvent('introComplete'));
           return;
         }
       }

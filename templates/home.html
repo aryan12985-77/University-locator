@@ -29,7 +29,7 @@
 
 <div class="home-page">
 
-  <div class="top-bar a1">
+  <div class="top-bar" id="hp-topbar">
     <a class="logo" href="/">
       <div class="logo-icon-wrap">
         <svg class="logo-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -55,14 +55,14 @@
   <div class="hero">
     <div class="hero-aurora"></div>
 
-    <div class="hero-badge a1"><span class="badge-dot"></span>🎓 Smart Campus Guide</div>
+    <div class="hero-badge" id="hp-badge"><span class="badge-dot"></span>🎓 Smart Campus Guide</div>
 
-    <h1 class="a2 hero-gradient-text">Find Any Place<br>On Campus</h1>
+    <h1 class="hero-gradient-text" id="hp-title">Find Any Place<br>On Campus</h1>
 
-    <p class="a3">Search for classrooms, offices, labs, canteen and more — get step-by-step directions instantly.</p>
+    <p id="hp-para">Search for classrooms, offices, labs, canteen and more — get step-by-step directions instantly.</p>
 
     <!-- SEARCH BOX — mascot walks with the typed text -->
-    <div class="search-outer a4">
+    <div class="search-outer" id="hp-search">
       <div class="search-card glass" id="searchCard">
         <div class="search-input-wrap">
           <span class="s-placeholder" id="sPlaceholder">Search for anything...</span>
@@ -89,7 +89,7 @@
       <div class="footstep-trail" id="footstepTrail"></div>
     </div>
 
-    <a href="/nearby" class="near-me-btn a4">
+    <a href="/nearby" class="near-me-btn" id="hp-nearby">
       <span class="nm-pulse"></span>
       <span class="nm-icon">📍</span>
       <span class="nm-text">
@@ -99,7 +99,7 @@
       <span class="nm-arrow">›</span>
     </a>
 
-    <div class="categories a5">
+    <div class="categories" id="hp-chips">
       <div class="cat-chip chip-sports"  onclick="quickSearch('Cricket Ground')">⚽ Sports</div>
       <div class="cat-chip chip-food"    onclick="quickSearch('Mess')">🍽 Food</div>
       <div class="cat-chip chip-library" onclick="quickSearch('Library')">📚 Library</div>
@@ -109,7 +109,7 @@
     </div>
 
     <!-- POPULAR PLACES -->
-    <div class="popular-wrap a5">
+    <div class="popular-wrap" id="hp-popular">
       <div class="popular-label">🔥 Popular Places</div>
       <div class="popular-scroll">
         <div class="pop-card" onclick="quickSearch('Library')">
@@ -156,7 +156,7 @@
     </div>
 
     <!-- STATS BAR -->
-    <div class="stats-glass a5">
+    <div class="stats-glass" id="hp-stats">
       <div class="stat-item">
         <div class="stat-icon">📍</div>
         <div class="stat-num count-up" data-target="60">0</div>
@@ -183,9 +183,9 @@
 
 <script>
 /* ═══════════════════════════════════════════════════════
-   FLOATING CAMPUS ICONS
+   FLOATING CAMPUS ICONS  (deferred — called after intro)
 ═══════════════════════════════════════════════════════ */
-(function () {
+function initFloatIcons() {
   const wrap = document.getElementById('floatIcons');
   ['📍','🗺','📌','🧭','📐','🏫','📍','🗺','📌'].forEach((ic) => {
     const el = document.createElement('div');
@@ -197,13 +197,12 @@
     el.textContent = ic;
     wrap.appendChild(el);
   });
-})();
+}
 
 /* ═══════════════════════════════════════════════════════
-   EARTH GLOBE — globe itself is static, only the
-   continents rotate across the sphere surface
+   EARTH GLOBE — deferred until after intro
 ═══════════════════════════════════════════════════════ */
-(function () {
+function initGlobe() {
   const cv  = document.getElementById('earthCanvas');
   const ctx = cv.getContext('2d');
   const CX = 95, CY = 95, R = 82;
@@ -268,7 +267,7 @@
     requestAnimationFrame(drawGlobe);
   }
   drawGlobe();
-})();
+}
 
 /* ═══════════════════════════════════════════════════════
    STUDENT MASCOT — lives inside the search box
@@ -472,7 +471,7 @@ function smDraw() {
   if (smState === 'idle' && smEmote) smEmoteFrame++;
   requestAnimationFrame(smDraw);
 }
-smDraw();
+/* smDraw() is called by initHomePage after intro ends */
 
 function setSmState(newState) {
   if (smState === newState) return;
@@ -632,7 +631,54 @@ function countUp(el) {
     if (cur >= t) clearInterval(timer);
   }, 40);
 }
-setTimeout(() => document.querySelectorAll('.stat-num.count-up').forEach(countUp), 700);
+
+/* ═══════════════════════════════════════════════════════
+   STAGGERED HOME PAGE ENTRANCE
+   Adds animation classes to each section in sequence
+═══════════════════════════════════════════════════════ */
+function triggerEntrance() {
+  const hp = document.querySelector('.home-page');
+  hp.style.opacity = '1';   /* reveal the container */
+
+  const seq = [
+    ['#hp-topbar',  'hpa-topbar',    0],
+    ['#hp-badge',   'hpa-badge',    80],
+    ['#hp-title',   'hpa-title',   160],
+    ['#hp-para',    'hpa-para',    270],
+    ['#hp-search',  'hpa-search',  370],
+    ['#hp-nearby',  'hpa-nearby',  450],
+    ['#hp-chips',   'hpa-chips',   540],
+    ['#hp-popular', 'hpa-popular', 620],
+    ['#hp-stats',   'hpa-stats',   710],
+  ];
+
+  seq.forEach(([sel, cls, delay]) => {
+    const el = document.querySelector(sel);
+    if (!el) return;
+    setTimeout(() => el.classList.add(cls), delay);
+  });
+
+  /* count-up starts just as the stats card arrives */
+  setTimeout(() => document.querySelectorAll('.stat-num.count-up').forEach(countUp), 880);
+}
+
+/* ═══════════════════════════════════════════════════════
+   INIT — deferred until intro canvas finishes
+═══════════════════════════════════════════════════════ */
+let homeInited = false;
+function initHomePage() {
+  if (homeInited) return;
+  homeInited = true;
+  initGlobe();
+  initFloatIcons();
+  smDraw();
+  triggerEntrance();
+}
+
+document.addEventListener('introComplete', initHomePage);
+
+/* Fallback: if intro.js fails or browser blocks canvas, reveal after 10 s */
+setTimeout(initHomePage, 10000);
 </script>
 </body>
 </html>

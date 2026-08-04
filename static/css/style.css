@@ -1475,3 +1475,69 @@ input.shake { animation: shake 0.4s ease; }
   .stat-num { font-size: 1.1rem; }
   .hero-aurora { width: 340px; height: 200px; }
 }
+
+/* ============================================================
+   HOME PAGE — INTRO-DRIVEN ENTRANCE ANIMATIONS
+   Elements start invisible; JS adds .hpa-* classes after intro.
+   ============================================================ */
+.home-page { opacity: 0; }
+
+@keyframes hpSlideTop {
+  from { opacity: 0; transform: translateY(-36px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes hpBlurRise {
+  from { opacity: 0; transform: translateY(32px); filter: blur(10px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+@keyframes hpRise {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes hpSearchIn {
+  from { opacity: 0; transform: translateY(20px) scaleX(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scaleX(1); }
+}
+@keyframes hpSlideLeft {
+  from { opacity: 0; transform: translateX(-26px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes hpChipPop {
+  from { opacity: 0; transform: translateY(16px) scale(0.78); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes hpCardSlide {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* -- individual element classes -- */
+.hpa-topbar  { animation: hpSlideTop  0.50s cubic-bezier(0.34,1.56,0.64,1) both; }
+.hpa-badge   { animation: hpRise      0.45s cubic-bezier(0.34,1.56,0.64,1) both; }
+.hpa-title   { animation: hpBlurRise  0.65s ease both; }
+.hpa-para    { animation: hpRise      0.50s ease both; }
+.hpa-search  { animation: hpSearchIn  0.58s cubic-bezier(0.34,1.56,0.64,1) both; }
+.hpa-nearby  { animation: hpSlideLeft 0.50s ease both; }
+.hpa-chips   { animation: hpRise      0.45s ease both; }
+.hpa-popular { animation: hpRise      0.50s ease both; }
+.hpa-stats   { animation: hpRise      0.50s ease both; }
+
+/* chip children stagger inside .hpa-chips */
+.hpa-chips .cat-chip { animation: hpChipPop 0.40s cubic-bezier(0.34,1.56,0.64,1) both; }
+.hpa-chips .cat-chip:nth-child(1) { animation-delay:  0ms; }
+.hpa-chips .cat-chip:nth-child(2) { animation-delay: 55ms; }
+.hpa-chips .cat-chip:nth-child(3) { animation-delay:110ms; }
+.hpa-chips .cat-chip:nth-child(4) { animation-delay:165ms; }
+.hpa-chips .cat-chip:nth-child(5) { animation-delay:220ms; }
+.hpa-chips .cat-chip:nth-child(6) { animation-delay:275ms; }
+
+/* popular card children stagger inside .hpa-popular */
+.hpa-popular .pop-card { animation: hpCardSlide 0.40s ease both; }
+.hpa-popular .pop-card:nth-child(1) { animation-delay:  0ms; }
+.hpa-popular .pop-card:nth-child(2) { animation-delay: 45ms; }
+.hpa-popular .pop-card:nth-child(3) { animation-delay: 90ms; }
+.hpa-popular .pop-card:nth-child(4) { animation-delay:135ms; }
+.hpa-popular .pop-card:nth-child(5) { animation-delay:180ms; }
+.hpa-popular .pop-card:nth-child(6) { animation-delay:225ms; }
+.hpa-popular .pop-card:nth-child(7) { animation-delay:270ms; }
+.hpa-popular .pop-card:nth-child(8) { animation-delay:315ms; }
