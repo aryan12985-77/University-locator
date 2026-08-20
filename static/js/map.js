@@ -114,7 +114,11 @@ function initMapControls() {
 }
 
 function startHeading(requestPermission) {
-  if (headingListening || !window.DeviceOrientationEvent) return;
+  if (headingListening) return;
+  if (!window.DeviceOrientationEvent) {
+    showToast("Compass direction is unavailable on this device", 2800);
+    return;
+  }
   function listen() {
     headingListening = true;
     window.addEventListener("deviceorientationabsolute", onHeading, true);
@@ -219,6 +223,17 @@ function onLocationFound(e) {
   var lat = e.latlng.lat;
   var lng = e.latlng.lng;
   lastPosition = e;
+  /* Some browsers expose travel direction through GPS even when they
+     do not expose a compass. Use it as a useful fallback while moving. */
+  if (deviceHeading === null && typeof e.heading === "number" && e.heading >= 0) {
+    deviceHeading = e.heading;
+    var fallbackMarker = document.querySelector(".user-location-marker .user-location-wrap");
+    if (fallbackMarker) fallbackMarker.style.setProperty("--heading", deviceHeading + "deg");
+    var fallbackCompass = document.getElementById("compassBtn");
+    if (fallbackCompass) fallbackCompass.style.transform = "rotate(" + (-deviceHeading) + "deg)";
+    var fallbackReadout = document.getElementById("headingReadout");
+    if (fallbackReadout) fallbackReadout.textContent = Math.round(deviceHeading) + "°";
+  }
 
   /* Update or create user marker */
   if (userMarker) {
