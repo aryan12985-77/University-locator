@@ -23,6 +23,120 @@ var movementHeading = null;
 var lastPosition    = null;
 var satelliteLayer  = null;
 var streetLayer     = null;
+var routeRequestId  = 0;
+var lastRouteOrigin = null;
+var routeBusy       = false;
+
+/*
+ * VGU internal drive/walk corridors.
+ * These are kept as editable GPS waypoints because indoor/building room
+ * coordinates are not road coordinates. Add a new corridor here when a
+ * campus road is mapped, instead of drawing a straight line through a wall.
+ */
+var CAMPUS_ROADS = {
+  west: [
+    [26.81260, 75.88835], [26.81258, 75.88955], [26.81248, 75.89060],
+    [26.81246, 75.89135], [26.81242, 75.89210], [26.81230, 75.89315],
+    [26.81220, 75.89378]
+  ],
+  north: [
+    [26.81260, 75.88835], [26.81268, 75.88965], [26.81270, 75.89075],
+    [26.81272, 75.89145], [26.81268, 75.89235], [26.81266, 75.89335],
+    [26.81268, 75.89452]
+  ],
+  south: [
+    [26.81135, 75.88980], [26.81145, 75.89065], [26.81152, 75.89155],
+    [26.81165, 75.89245], [26.81175, 75.89320]
+  ]
+};
+
+// Road-side entrance points for major campus zones. Room coordinates remain
+// inside buildings; routing should end at these accessible road approaches.
+var BUILDING_ROAD_ENTRIES = {
+  "Tech Block": [26.81220, 75.89378],
+  "Admin Block": [26.81246, 75.89135],
+  "Mess Block": [26.81140, 75.89165],
+  "Hostel": [26.81120, 75.89210],
+  "Academic Block": [26.81120, 75.88990],
+  "Academic Area": [26.81175, 75.89245],
+  "Sports Area": [26.81255, 75.89405],
+  "Campus Parking": [26.81290, 75.89295],
+  "Main Gate": [26.81268, 75.89452],
+  "Gate": [26.81260, 75.88835]
+};
+
+function getRoadDestination() {
+  if (!destinationData) return null;
+  var entry = BUILDING_ROAD_ENTRIES[destinationData.building];
+  return entry || [
+    destinationData.entry_lat || destinationData.lat,
+    destinationData.entry_lng || destinationData.lng
+  ];
+}
+
+function nearestCampusCorridor(lat, lng) {
+  var points = Object.keys(CAMPUS_ROADS).map(function (key) {
+    var path = CAMPUS_ROADS[key];
+    var nearest = path.reduce(function (best, point, index) {
+      var d = haversine(lat, lng, point[0], point[1]);
+      return d < best.distance ? { distance: d, index: index } : best;
+    }, { distance: Infinity, index: 0 });
+    return { path: path, nearest: nearest };
+  });
+  return points.sort(function (a, b) {
+    return a.nearest.distance - b.nearest.distance;
+  })[0];
+}
+
+function campusRoadFallback(uLat, uLng, dLat, dLng) {
+  var corridor = nearestCampusCorridor(dLat, dLng);
+  var path = corridor.path.slice();
+  var start = nearestCampusCorridor(uLat, uLng);
+  var startPoint = start.path[start.nearest.index];
+  var endPoint = path[corridor.nearest.index];
+  return [[uLat, uLng], [startPoint[0], startPoint[1]]]
+    .concat(path.slice(corridor.nearest.index))
+    .concat([[endPoint[0], endPoint[1]], [dLat, dLng]]);
+}
+
+function requestRoadRoute(points, requestId, fallbackPoints) {
+  var coordinates = points.map(function (p) { return p[1] + "," + p[0]; }).join(";");
+  var url = "https://router.project-osrm.org/route/v1/driving/" +
+    coordinates + "?overview=full&geometries=geojson&steps=false";
+
+  return fetch(url).then(function (response) {
+    if (!response.ok) throw new Error("Road router returned " + response.status);
+    return response.json();
+  }).then(function (data) {
+    if (requestId !== routeRequestId) return;
+    if (!data.routes || !data.routes[0] || !data.routes[0].geometry) {
+      throw new Error("No road route returned");
+    }
+    var latLngs = data.routes[0].geometry.coordinates.map(function (pair) {
+      return [pair[1], pair[0]];
+    });
+    drawRouteLine(latLngs, false);
+  }).catch(function (error) {
+    if (requestId !== routeRequestId) return;
+    console.warn("Road routing unavailable; using campus corridors", error);
+    drawRouteLine(fallbackPoints, true);
+  });
+}
+
+function drawRouteLine(latLngs, isFallback) {
+  if (routeLine) map.removeLayer(routeLine);
+  routeLine = L.polyline(latLngs, {
+    color: isFallback ? "#f59e0b" : "#4f46e5",
+    weight: 6,
+    opacity: 0.95,
+    dashArray: isFallback ? "5, 9" : null,
+    lineCap: "round",
+    lineJoin: "round"
+  }).addTo(map);
+  routeLine.bringToFront();
+  var status = document.getElementById("routeStatus");
+  if (status) status.textContent = isFallback ? "Campus path mode" : "Road route";
+}
 
 /* ── Icons ──────────────────────────────────────────────── */
 function mkDestIcon() {
@@ -262,9 +376,8 @@ function onLocationFound(e) {
   if (accuracy && e.accuracy) accuracy.textContent = "±" + Math.round(e.accuracy) + "m GPS";
 
   if (destinationData) {
-    drawCampusRoute(lat, lng,
-      destinationData.entry_lat || destinationData.lat,
-      destinationData.entry_lng || destinationData.lng);
+    var roadDestination = getRoadDestination();
+    drawCampusRoute(lat, lng, roadDestination[0], roadDestination[1]);
   }
 }
 
@@ -279,24 +392,22 @@ function onLocationError(e) {
   showToast(msg, 4000);
 }
 
-/* ── Draw campus route (straight line — no OSRM needed) ── */
+/* ── Draw real road route, with editable campus-corridor fallback ── */
 function drawCampusRoute(uLat, uLng, dLat, dLng) {
-  /* Remove old line */
-  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+  // GPS watch fires repeatedly; do not request a new route for every fix.
+  var currentOrigin = [uLat, uLng];
+  if (routeBusy && lastRouteOrigin &&
+      haversine(lastRouteOrigin[0], lastRouteOrigin[1], uLat, uLng) < 18) return;
+  if (lastRouteOrigin &&
+      haversine(lastRouteOrigin[0], lastRouteOrigin[1], uLat, uLng) < 18) return;
+  lastRouteOrigin = currentOrigin;
+  routeBusy = true;
+  var requestId = ++routeRequestId;
+  var fallback = campusRoadFallback(uLat, uLng, dLat, dLng);
+  requestRoadRoute([currentOrigin, [dLat, dLng]], requestId, fallback)
+    .finally(function () { if (requestId === routeRequestId) routeBusy = false; });
 
-  /* Dashed polyline: user → destination */
-  routeLine = L.polyline(
-    [[uLat, uLng], [dLat, dLng]],
-    {
-      color:     "#4f46e5",
-      weight:    4,
-      opacity:   0.85,
-      dashArray: "10, 8",
-      lineCap:   "round"
-    }
-  ).addTo(map);
-
-  /* Distance + walking time */
+  /* Distance + walking time uses the road-side destination */
   var dist   = haversine(uLat, uLng, dLat, dLng);
   var mins   = Math.max(1, Math.round(dist / 80));   /* ~80 m/min walking */
   var label  = dist < 1000
@@ -310,9 +421,8 @@ function drawCampusRoute(uLat, uLng, dLat, dLng) {
                          "  ·  🚶 " + label;
   }
 
-  /* Keep both markers visible but NEVER zoom out past CAMPUS_ZOOM.
-     Only adjust if user is on campus (within 500 m of centre). */
-  if (dist < 5000) {
+  /* Keep both markers visible but never zoom out too far. */
+  if (dist < 5000 && !routeLine) {
     var group = L.featureGroup([userMarker, destMarker]);
     var bounds = group.getBounds();
     map.fitBounds(bounds.pad(0.25), {
