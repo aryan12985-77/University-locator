@@ -3,7 +3,7 @@
    Maintenance guide:
    - Change CAMPUS_LAT/LNG/ZOOM to adjust the default map view.
    - Change mkUserIcon() to redesign the live person marker.
-   - GPS updates arrive in onLocationFound(); compass updates arrive in onHeading().
+   - GPS updates and travel direction arrive in onLocationFound().
    - Map controls are created in initMapControls().
    ============================================================ */
 
@@ -18,9 +18,9 @@ var destMarker      = null;
 var routeLine       = null;
 var destinationData = null;
 var locating        = false;
-var deviceHeading   = null;
+// Direction is deliberately based on movement/course, not phone tilt or hand angle.
+var movementHeading = null;
 var lastPosition    = null;
-var headingListening = false;
 var satelliteLayer  = null;
 var streetLayer     = null;
 
@@ -82,7 +82,6 @@ window.onload = function () {
 
   setTimeout(() => map.invalidateSize(), 300);
   initMapControls();
-  startHeading();
   loadDestination();
 };
 
@@ -108,47 +107,43 @@ function initMapControls() {
   }
   var compass = document.getElementById("compassBtn");
   if (compass) compass.addEventListener("click", function () {
-    if (deviceHeading !== null) {
-      compass.style.transform = "rotate(" + (-deviceHeading) + "deg)";
-      map.setBearing ? map.setBearing(deviceHeading) : null;
+    if (movementHeading !== null) {
+      compass.style.transform = "rotate(" + (-movementHeading) + "deg)";
     } else {
-      showToast("Move your phone in a figure-eight to calibrate direction", 2800);
-      startHeading(true);
+      showToast("Walk a few metres to detect your travel direction", 2800);
     }
   });
 }
 
-function startHeading(requestPermission) {
-  if (headingListening) return;
-  if (!window.DeviceOrientationEvent) {
-    showToast("Compass direction is unavailable on this device", 2800);
-    return;
-  }
-  function listen() {
-    headingListening = true;
-    window.addEventListener("deviceorientationabsolute", onHeading, true);
-    window.addEventListener("deviceorientation", onHeading, true);
-  }
-  if (requestPermission && typeof DeviceOrientationEvent.requestPermission === "function") {
-    DeviceOrientationEvent.requestPermission().then(function (state) {
-      if (state === "granted") listen();
-      else showToast("Compass permission is needed to show direction", 3000);
-    }).catch(function () { showToast("Compass permission was not granted", 2500); });
-  } else listen();
+// Calculate travel bearing between two GPS fixes. This ignores device angle.
+function bearingBetween(a, b) {
+  var lat1 = a.lat * Math.PI / 180;
+  var lat2 = b.lat * Math.PI / 180;
+  var dLng = (b.lng - a.lng) * Math.PI / 180;
+  var y = Math.sin(dLng) * Math.cos(lat2);
+  var x = Math.cos(lat1) * Math.sin(lat2) -
+          Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
-function onHeading(e) {
-  var heading = typeof e.webkitCompassHeading === "number"
-    ? e.webkitCompassHeading
-    : (typeof e.alpha === "number" ? (360 - e.alpha) % 360 : null);
-  if (heading === null || isNaN(heading)) return;
-  deviceHeading = heading;
+// Smooth compass wrap-around (359° → 0°) so the arrow does not jump.
+function smoothHeading(next) {
+  if (movementHeading === null) return next;
+  var delta = ((next - movementHeading + 540) % 360) - 180;
+  return (movementHeading + delta * 0.28 + 360) % 360;
+}
+
+function updateMovementHeading(heading) {
+  movementHeading = smoothHeading(heading);
   var marker = document.querySelector(".user-location-marker .user-location-wrap");
-  if (marker) marker.style.setProperty("--heading", heading + "deg");
+  if (marker) {
+    marker.style.setProperty("--heading", movementHeading + "deg");
+    marker.classList.add("has-heading");
+  }
   var compass = document.getElementById("compassBtn");
-  if (compass) compass.style.transform = "rotate(" + (-heading) + "deg)";
+  if (compass) compass.style.transform = "rotate(" + (-movementHeading) + "deg)";
   var readout = document.getElementById("headingReadout");
-  if (readout) readout.textContent = Math.round(heading) + "°";
+  if (readout) readout.textContent = Math.round(movementHeading) + "°";
 }
 
 /* ── Load destination from /search ─────────────────────── */
@@ -227,18 +222,25 @@ function onLocationFound(e) {
 
   var lat = e.latlng.lat;
   var lng = e.latlng.lng;
-  lastPosition = e;
-  /* Some browsers expose travel direction through GPS even when they
-     do not expose a compass. Use it as a useful fallback while moving. */
-  if (deviceHeading === null && typeof e.heading === "number" && e.heading >= 0) {
-    deviceHeading = e.heading;
-    var fallbackMarker = document.querySelector(".user-location-marker .user-location-wrap");
-    if (fallbackMarker) fallbackMarker.style.setProperty("--heading", deviceHeading + "deg");
-    var fallbackCompass = document.getElementById("compassBtn");
-    if (fallbackCompass) fallbackCompass.style.transform = "rotate(" + (-deviceHeading) + "deg)";
-    var fallbackReadout = document.getElementById("headingReadout");
-    if (fallbackReadout) fallbackReadout.textContent = Math.round(deviceHeading) + "°";
+  var currentFix = { lat: lat, lng: lng, time: Date.now() };
+
+  /*
+   * Only accept a heading while the user is actually travelling.
+   * This prevents GPS noise and phone-in-hand rotation from turning
+   * the direction arrow while the user is standing still.
+   */
+  var speed = typeof e.speed === "number" ? e.speed : 0;
+  var course = (typeof e.heading === "number" && e.heading >= 0) ? e.heading : null;
+  if (lastPosition) {
+    var elapsed = Math.max(0.5, (currentFix.time - lastPosition.time) / 1000);
+    var moved = haversine(lastPosition.lat, lastPosition.lng, lat, lng);
+    if (!course && moved >= 3) course = bearingBetween(lastPosition, currentFix);
+    if (speed < 0.8 && moved / elapsed < 0.8) course = null;
   }
+  if (course !== null && (speed >= 0.8 || !lastPosition || haversine(lastPosition.lat, lastPosition.lng, lat, lng) >= 3)) {
+    updateMovementHeading(course);
+  }
+  lastPosition = currentFix;
 
   /* Update or create user marker */
   if (userMarker) {

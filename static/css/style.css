@@ -709,7 +709,10 @@ body {
 }
 .user-heading {
   position: absolute; width: 60px; height: 60px; border-radius: 50%;
-  transform: rotate(var(--heading)); transition: transform .25s ease-out;
+  opacity: 0; transform: rotate(var(--heading)); transition: transform .25s ease-out, opacity .3s ease;
+}
+.user-location-wrap.has-heading .user-heading {
+  opacity: 1;
 }
 .user-heading::before {
   content: ""; position: absolute; left: 22px; top: -4px;
