@@ -1,5 +1,10 @@
 /* ============================================================
    Campus Navigator — Full Page Map  |  VGU, Jaipur
+   Maintenance guide:
+   - Change CAMPUS_LAT/LNG/ZOOM to adjust the default map view.
+   - Change mkUserIcon() to redesign the live person marker.
+   - GPS updates arrive in onLocationFound(); compass updates arrive in onHeading().
+   - Map controls are created in initMapControls().
    ============================================================ */
 
 /* Campus centre (used as fallback view) */

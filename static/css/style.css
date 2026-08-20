@@ -637,6 +637,10 @@ body {
 
 /* ============================================================
    MAP FULL PAGE
+   Maintenance guide:
+   - Map layout begins at .map-page.
+   - Edit .map-hud and .map-compass-control for map control placement.
+   - Edit the user-location-avatar block below to change the live person marker.
    ============================================================ */
 .map-page {
   height: 100vh;

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- Maintenance: this page is the full-screen map shell; map behavior lives in static/js/map.js. -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Map — Campus Navigator</title>
@@ -49,11 +50,13 @@
   <div class="map-full-container">
     <div id="map"></div>
 
+    <!-- Map HUD: status and base-map controls are wired in map.js. -->
     <div class="map-hud">
       <div class="map-status-pill"><span class="status-live-dot"></span><span id="accuracyReadout">GPS ready</span></div>
       <button class="map-style-btn" id="mapStyleBtn" data-mode="satellite">◈ Street</button>
     </div>
 
+    <!-- Compass is sensor-driven; it remains available even when GPS is unavailable. -->
     <div class="map-compass-control">
       <button class="compass-btn" id="compassBtn" title="Orient map to your direction">N</button>
       <span id="headingReadout">—</span>
