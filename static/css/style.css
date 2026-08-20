@@ -745,6 +745,7 @@ body {
   color:#e2e8f0; backdrop-filter:blur(14px); box-shadow:0 7px 24px rgba(2,8,23,.28);
 }
 .map-status-pill { padding:9px 12px; border-radius:30px; font:600 .7rem Poppins,sans-serif; letter-spacing:.02em; }
+.map-route-pill { padding:9px 12px; border-radius:30px; font:600 .68rem Poppins,sans-serif; color:#c7d2fe; background:rgba(79,70,229,.24); border:1px solid rgba(129,140,248,.3); }
 .status-live-dot { display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; background:#34d399; box-shadow:0 0 0 4px rgba(52,211,153,.15); }
 .map-style-btn { pointer-events:auto; padding:9px 12px; border-radius:30px; cursor:pointer; font:600 .7rem Poppins,sans-serif; }
 .map-style-btn:hover { background:#4f46e5; }
