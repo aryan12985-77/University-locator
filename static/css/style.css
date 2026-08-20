@@ -690,6 +690,62 @@ body {
 }
 .locate-fab:hover { background: var(--primary); transform: scale(1.08); }
 
+/* ── Live location avatar + direction cone ── */
+.user-location-marker { background: transparent; border: 0; }
+.user-location-wrap {
+  --heading: 0deg;
+  position: relative; width: 76px; height: 76px;
+  display: flex; align-items: center; justify-content: center;
+}
+.user-accuracy-ring {
+  position: absolute; width: 58px; height: 58px; border-radius: 50%;
+  background: rgba(16,185,129,.14); border: 1px solid rgba(52,211,153,.5);
+  box-shadow: 0 0 0 8px rgba(16,185,129,.06);
+  transition: width .5s ease, height .5s ease;
+}
+.user-heading {
+  position: absolute; width: 60px; height: 60px; border-radius: 50%;
+  transform: rotate(var(--heading)); transition: transform .25s ease-out;
+}
+.user-heading::before {
+  content: ""; position: absolute; left: 22px; top: -4px;
+  width: 0; height: 0; border-left: 8px solid transparent;
+  border-right: 8px solid transparent; border-bottom: 30px solid rgba(56,189,248,.35);
+  filter: drop-shadow(0 0 5px rgba(34,211,238,.7));
+}
+.user-avatar {
+  position: relative; z-index: 2; width: 28px; height: 34px;
+  filter: drop-shadow(0 3px 5px rgba(2,8,23,.9));
+}
+.avatar-head {
+  position: absolute; top: 0; left: 8px; width: 13px; height: 13px;
+  border-radius: 50%; background: #fbbf8a; border: 2px solid #fff;
+}
+.avatar-body {
+  position: absolute; top: 11px; left: 4px; width: 21px; height: 20px;
+  border-radius: 10px 10px 6px 6px; background: linear-gradient(135deg,#4f46e5,#06b6d4);
+  border: 2px solid #fff;
+}
+.avatar-pack {
+  position: absolute; top: 15px; left: 0; width: 7px; height: 13px;
+  border-radius: 4px; background: #312e81; border: 1px solid #c7d2fe;
+}
+
+/* ── Map HUD controls ── */
+.map-hud { position:absolute; top:16px; left:16px; right:76px; z-index:500; display:flex; align-items:center; gap:8px; pointer-events:none; }
+.map-status-pill, .map-style-btn, .compass-btn, .map-compass-control span {
+  background:rgba(15,23,42,.88); border:1px solid rgba(255,255,255,.14);
+  color:#e2e8f0; backdrop-filter:blur(14px); box-shadow:0 7px 24px rgba(2,8,23,.28);
+}
+.map-status-pill { padding:9px 12px; border-radius:30px; font:600 .7rem Poppins,sans-serif; letter-spacing:.02em; }
+.status-live-dot { display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; background:#34d399; box-shadow:0 0 0 4px rgba(52,211,153,.15); }
+.map-style-btn { pointer-events:auto; padding:9px 12px; border-radius:30px; cursor:pointer; font:600 .7rem Poppins,sans-serif; }
+.map-style-btn:hover { background:#4f46e5; }
+.map-compass-control { position:absolute; top:70px; right:16px; z-index:500; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.compass-btn { width:40px; height:40px; border-radius:50%; color:#fb7185; font:800 1rem Poppins,sans-serif; cursor:pointer; transition:transform .25s ease; }
+.map-compass-control span { padding:2px 6px; border-radius:8px; font:500 .58rem Poppins,sans-serif; }
+.locate-glyph { font-size:1.55rem; line-height:1; }
+
 /* ============================================================
    NEW LOGO ICON
    ============================================================ */

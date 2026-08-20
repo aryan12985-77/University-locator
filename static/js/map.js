@@ -13,6 +13,11 @@ var destMarker      = null;
 var routeLine       = null;
 var destinationData = null;
 var locating        = false;
+var deviceHeading   = null;
+var lastPosition    = null;
+var headingListening = false;
+var satelliteLayer  = null;
+var streetLayer     = null;
 
 /* ── Icons ──────────────────────────────────────────────── */
 function mkDestIcon() {
@@ -28,14 +33,16 @@ function mkDestIcon() {
 }
 function mkUserIcon() {
   return L.divIcon({
-    className: "",
-    html: "<div style='position:relative;width:24px;height:24px'>" +
-            "<div style='position:absolute;inset:0;border-radius:50%;" +
-              "background:#10b981;border:3px solid #fff;" +
-              "box-shadow:0 0 0 0 rgba(16,185,129,.5);" +
-              "animation:gps-pulse 1.8s infinite'></div>" +
+    className: "user-location-marker",
+    html: "<div class='user-location-wrap'>" +
+            "<div class='user-accuracy-ring'></div>" +
+            "<div class='user-heading' aria-hidden='true'></div>" +
+            "<div class='user-avatar' aria-label='Your live location'>" +
+              "<div class='avatar-head'></div><div class='avatar-body'></div>" +
+              "<div class='avatar-pack'></div>" +
+            "</div>" +
           "</div>",
-    iconSize: [24,24], iconAnchor: [12,12]
+    iconSize: [76,76], iconAnchor: [38,38]
   });
 }
 
@@ -55,18 +62,85 @@ window.onload = function () {
     maxBoundsViscosity: 0.8
   });
 
-  L.tileLayer(
+  satelliteLayer = L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     { attribution: "© Esri", maxZoom: 21 }
   ).addTo(map);
+  streetLayer = L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    { attribution: "© OpenStreetMap contributors", maxZoom: 21 }
+  );
 
   /* Leaflet locate events */
   map.on("locationfound", onLocationFound);
   map.on("locationerror", onLocationError);
 
   setTimeout(() => map.invalidateSize(), 300);
+  initMapControls();
+  startHeading();
   loadDestination();
 };
+
+function initMapControls() {
+  var styleBtn = document.getElementById("mapStyleBtn");
+  if (styleBtn) {
+    styleBtn.addEventListener("click", function () {
+      var satellite = styleBtn.dataset.mode === "satellite";
+      if (satellite) {
+        map.removeLayer(satelliteLayer);
+        streetLayer.addTo(map);
+        styleBtn.dataset.mode = "street";
+        styleBtn.textContent = "✦ Satellite";
+        showToast("Street map selected", 1800);
+      } else {
+        map.removeLayer(streetLayer);
+        satelliteLayer.addTo(map);
+        styleBtn.dataset.mode = "satellite";
+        styleBtn.textContent = "◈ Street";
+        showToast("Satellite map selected", 1800);
+      }
+    });
+  }
+  var compass = document.getElementById("compassBtn");
+  if (compass) compass.addEventListener("click", function () {
+    if (deviceHeading !== null) {
+      compass.style.transform = "rotate(" + (-deviceHeading) + "deg)";
+      map.setBearing ? map.setBearing(deviceHeading) : null;
+    } else {
+      showToast("Move your phone in a figure-eight to calibrate direction", 2800);
+      startHeading(true);
+    }
+  });
+}
+
+function startHeading(requestPermission) {
+  if (headingListening || !window.DeviceOrientationEvent) return;
+  function listen() {
+    headingListening = true;
+    window.addEventListener("deviceorientationabsolute", onHeading, true);
+    window.addEventListener("deviceorientation", onHeading, true);
+  }
+  if (requestPermission && typeof DeviceOrientationEvent.requestPermission === "function") {
+    DeviceOrientationEvent.requestPermission().then(function (state) {
+      if (state === "granted") listen();
+      else showToast("Compass permission is needed to show direction", 3000);
+    }).catch(function () { showToast("Compass permission was not granted", 2500); });
+  } else listen();
+}
+
+function onHeading(e) {
+  var heading = typeof e.webkitCompassHeading === "number"
+    ? e.webkitCompassHeading
+    : (typeof e.alpha === "number" ? (360 - e.alpha) % 360 : null);
+  if (heading === null || isNaN(heading)) return;
+  deviceHeading = heading;
+  var marker = document.querySelector(".user-location-marker .user-location-wrap");
+  if (marker) marker.style.setProperty("--heading", heading + "deg");
+  var compass = document.getElementById("compassBtn");
+  if (compass) compass.style.transform = "rotate(" + (-heading) + "deg)";
+  var readout = document.getElementById("headingReadout");
+  if (readout) readout.textContent = Math.round(heading) + "°";
+}
 
 /* ── Load destination from /search ─────────────────────── */
 function loadDestination() {
@@ -144,6 +218,7 @@ function onLocationFound(e) {
 
   var lat = e.latlng.lat;
   var lng = e.latlng.lng;
+  lastPosition = e;
 
   /* Update or create user marker */
   if (userMarker) {
@@ -155,6 +230,14 @@ function onLocationFound(e) {
                  (e.accuracy ? "±" + Math.round(e.accuracy) + "m accuracy" : "") +
                  "</small>");
   }
+  var ring = document.querySelector(".user-location-marker .user-accuracy-ring");
+  if (ring && e.accuracy) {
+    var px = Math.max(38, Math.min(150, e.accuracy * 0.8));
+    ring.style.width = px + "px";
+    ring.style.height = px + "px";
+  }
+  var accuracy = document.getElementById("accuracyReadout");
+  if (accuracy && e.accuracy) accuracy.textContent = "±" + Math.round(e.accuracy) + "m GPS";
 
   if (destinationData) {
     drawCampusRoute(lat, lng,

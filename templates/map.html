@@ -49,8 +49,18 @@
   <div class="map-full-container">
     <div id="map"></div>
 
+    <div class="map-hud">
+      <div class="map-status-pill"><span class="status-live-dot"></span><span id="accuracyReadout">GPS ready</span></div>
+      <button class="map-style-btn" id="mapStyleBtn" data-mode="satellite">◈ Street</button>
+    </div>
+
+    <div class="map-compass-control">
+      <button class="compass-btn" id="compassBtn" title="Orient map to your direction">N</button>
+      <span id="headingReadout">—</span>
+    </div>
+
     <!-- Locate FAB -->
-    <button class="locate-fab" onclick="locateUser()" title="My Location">📍</button>
+    <button class="locate-fab" onclick="locateUser()" title="My Location"><span class="locate-glyph">⌖</span></button>
 
     <!-- Floating info panel (populated by JS) -->
     <div class="glass floating-info" id="floatingInfo" style="display:none;">
