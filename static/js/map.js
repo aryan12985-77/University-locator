@@ -28,27 +28,46 @@ var lastRouteOrigin = null;
 var routeBusy       = false;
 
 /*
- * VGU internal drive/walk corridors.
- * These are kept as editable GPS waypoints because indoor/building room
- * coordinates are not road coordinates. Add a new corridor here when a
- * campus road is mapped, instead of drawing a straight line through a wall.
+ * Editable VGU road graph. Each edge follows a campus-road-like corridor;
+ * building and room coordinates are never treated as road coordinates.
+ * Gate 1 = east/main entry, Gate 2 = north entry, Gate 3 = west entry.
  */
-var CAMPUS_ROADS = {
-  west: [
-    [26.81260, 75.88835], [26.81258, 75.88955], [26.81248, 75.89060],
-    [26.81246, 75.89135], [26.81242, 75.89210], [26.81230, 75.89315],
-    [26.81220, 75.89378]
-  ],
-  north: [
-    [26.81260, 75.88835], [26.81268, 75.88965], [26.81270, 75.89075],
-    [26.81272, 75.89145], [26.81268, 75.89235], [26.81266, 75.89335],
-    [26.81268, 75.89452]
-  ],
-  south: [
-    [26.81135, 75.88980], [26.81145, 75.89065], [26.81152, 75.89155],
-    [26.81165, 75.89245], [26.81175, 75.89320]
-  ]
+var CAMPUS_GATES = {
+  "Gate 1": [26.812677, 75.894521],
+  "Gate 2": [26.813067, 75.891446],
+  "Gate 3": [26.812604, 75.888329]
 };
+
+var CAMPUS_NODES = {
+  gate1: CAMPUS_GATES["Gate 1"],
+  gate2: CAMPUS_GATES["Gate 2"],
+  gate3: CAMPUS_GATES["Gate 3"],
+  northWest: [26.81260, 75.88955],
+  northMid: [26.81270, 75.89075],
+  northEast: [26.81268, 75.89335],
+  westHub: [26.81248, 75.89060],
+  academic: [26.81120, 75.88990],
+  admin: [26.81246, 75.89135],
+  southWest: [26.81135, 75.88980],
+  mess: [26.81140, 75.89165],
+  central: [26.81175, 75.89245],
+  hostel: [26.81120, 75.89210],
+  tech: [26.81220, 75.89378],
+  southEast: [26.81175, 75.89320],
+  sports: [26.81255, 75.89405],
+  parking: [26.81290, 75.89295]
+};
+
+var CAMPUS_EDGES = [
+  ["gate3", "northWest"], ["northWest", "northMid"],
+  ["northMid", "gate2"], ["gate2", "northEast"],
+  ["northEast", "gate1"], ["gate3", "westHub"],
+  ["westHub", "admin"], ["admin", "tech"], ["tech", "gate1"],
+  ["westHub", "southWest"], ["southWest", "academic"],
+  ["academic", "mess"], ["mess", "central"], ["central", "hostel"],
+  ["central", "southEast"], ["southEast", "tech"],
+  ["central", "parking"], ["parking", "sports"], ["sports", "gate1"]
+];
 
 // Road-side entrance points for major campus zones. Room coordinates remain
 // inside buildings; routing should end at these accessible road approaches.
@@ -65,6 +84,58 @@ var BUILDING_ROAD_ENTRIES = {
   "Gate": [26.81260, 75.88835]
 };
 
+function nearestGate(lat, lng) {
+  return Object.keys(CAMPUS_GATES).reduce(function (best, name) {
+    var point = CAMPUS_GATES[name];
+    var distance = haversine(lat, lng, point[0], point[1]);
+    return distance < best.distance ? { name: name, point: point, distance: distance } : best;
+  }, { name: "Gate 1", point: CAMPUS_GATES["Gate 1"], distance: Infinity });
+}
+
+function nearestCampusNode(lat, lng) {
+  return Object.keys(CAMPUS_NODES).reduce(function (best, name) {
+    var point = CAMPUS_NODES[name];
+    var distance = haversine(lat, lng, point[0], point[1]);
+    return distance < best.distance ? { name: name, point: point, distance: distance } : best;
+  }, { name: "gate1", point: CAMPUS_NODES.gate1, distance: Infinity });
+}
+
+function campusPath(startName, endName) {
+  var graph = {};
+  Object.keys(CAMPUS_NODES).forEach(function (name) { graph[name] = []; });
+  CAMPUS_EDGES.forEach(function (edge) {
+    var a = edge[0], b = edge[1];
+    var cost = haversine(CAMPUS_NODES[a][0], CAMPUS_NODES[a][1],
+                         CAMPUS_NODES[b][0], CAMPUS_NODES[b][1]);
+    graph[a].push({ node: b, cost: cost });
+    graph[b].push({ node: a, cost: cost });
+  });
+
+  var distances = {}, previous = {}, open = Object.keys(CAMPUS_NODES);
+  open.forEach(function (name) { distances[name] = Infinity; });
+  distances[startName] = 0;
+  while (open.length) {
+    open.sort(function (a, b) { return distances[a] - distances[b]; });
+    var current = open.shift();
+    if (current === endName || distances[current] === Infinity) break;
+    graph[current].forEach(function (edge) {
+      var next = distances[current] + edge.cost;
+      if (next < distances[edge.node]) {
+        distances[edge.node] = next;
+        previous[edge.node] = current;
+      }
+    });
+  }
+
+  var names = [], cursor = endName;
+  while (cursor) {
+    names.unshift(cursor);
+    if (cursor === startName) break;
+    cursor = previous[cursor];
+  }
+  return names[0] === startName ? names.map(function (name) { return CAMPUS_NODES[name]; }) : [];
+}
+
 function getRoadDestination() {
   if (!destinationData) return null;
   var entry = BUILDING_ROAD_ENTRIES[destinationData.building];
@@ -74,29 +145,18 @@ function getRoadDestination() {
   ];
 }
 
-function nearestCampusCorridor(lat, lng) {
-  var points = Object.keys(CAMPUS_ROADS).map(function (key) {
-    var path = CAMPUS_ROADS[key];
-    var nearest = path.reduce(function (best, point, index) {
-      var d = haversine(lat, lng, point[0], point[1]);
-      return d < best.distance ? { distance: d, index: index } : best;
-    }, { distance: Infinity, index: 0 });
-    return { path: path, nearest: nearest };
-  });
-  return points.sort(function (a, b) {
-    return a.nearest.distance - b.nearest.distance;
-  })[0];
-}
-
 function campusRoadFallback(uLat, uLng, dLat, dLng) {
-  var corridor = nearestCampusCorridor(dLat, dLng);
-  var path = corridor.path.slice();
-  var start = nearestCampusCorridor(uLat, uLng);
-  var startPoint = start.path[start.nearest.index];
-  var endPoint = path[corridor.nearest.index];
-  return [[uLat, uLng], [startPoint[0], startPoint[1]]]
-    .concat(path.slice(corridor.nearest.index))
-    .concat([[endPoint[0], endPoint[1]], [dLat, dLng]]);
+  var gate = nearestGate(uLat, uLng);
+  var start = nearestCampusNode(uLat, uLng);
+  var end = nearestCampusNode(dLat, dLng);
+  var startNode = start.name.indexOf("gate") === 0 ? start.name : gate.name.toLowerCase().replace(" ", "");
+  var inside = start.distance < 220;
+  var internal = campusPath(inside ? startNode : gate.name.toLowerCase().replace(" ", ""), end.name);
+  var points = [[uLat, uLng]];
+  if (!inside) points.push(gate.point);
+  if (internal.length) points = points.concat(internal);
+  points.push([dLat, dLng]);
+  return points;
 }
 
 function requestRoadRoute(points, requestId, fallbackPoints) {
