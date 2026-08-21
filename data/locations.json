@@ -144,6 +144,15 @@
     "keywords": "gate 3 three entry exit side gate"
   },
   {
+    "name": "Gate 2",
+    "building": "Gate",
+    "floor": "Ground",
+    "lat": 26.813067,
+    "lng": 75.891446,
+    "type": "gate",
+    "keywords": "gate 2 two entry exit north gate campus entrance"
+  },
+  {
     "name": "Hostel 1.19",
     "building": "Hostel",
     "floor": "Multiple",

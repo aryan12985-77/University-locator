@@ -26,6 +26,7 @@ var streetLayer     = null;
 var routeRequestId  = 0;
 var lastRouteOrigin = null;
 var routeBusy       = false;
+var campusRoadLayer = null;
 
 /*
  * Editable VGU road graph. Each edge follows a campus-road-like corridor;
@@ -100,6 +101,23 @@ function nearestCampusNode(lat, lng) {
   }, { name: "gate1", point: CAMPUS_NODES.gate1, distance: Infinity });
 }
 
+function isInsideCampus(lat, lng) {
+  /* Editable safety boundary around the mapped VGU campus footprint. */
+  var polygon = [
+    [26.81282, 75.88815], [26.81328, 75.89472],
+    [26.81055, 75.89472], [26.81045, 75.88935]
+  ];
+  var inside = false;
+  for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    var yi = polygon[i][0], xi = polygon[i][1];
+    var yj = polygon[j][0], xj = polygon[j][1];
+    var crosses = ((yi > lat) !== (yj > lat)) &&
+      (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
 function campusPath(startName, endName) {
   var graph = {};
   Object.keys(CAMPUS_NODES).forEach(function (name) { graph[name] = []; });
@@ -149,9 +167,9 @@ function campusRoadFallback(uLat, uLng, dLat, dLng) {
   var gate = nearestGate(uLat, uLng);
   var start = nearestCampusNode(uLat, uLng);
   var end = nearestCampusNode(dLat, dLng);
-  var startNode = start.name.indexOf("gate") === 0 ? start.name : gate.name.toLowerCase().replace(" ", "");
-  var inside = start.distance < 220;
-  var internal = campusPath(inside ? startNode : gate.name.toLowerCase().replace(" ", ""), end.name);
+  var inside = isInsideCampus(uLat, uLng);
+  var startNode = inside ? start.name : gate.name.toLowerCase().replace(" ", "");
+  var internal = campusPath(startNode, end.name);
   var points = [[uLat, uLng]];
   if (!inside) points.push(gate.point);
   if (internal.length) points = points.concat(internal);
@@ -195,7 +213,40 @@ function drawRouteLine(latLngs, isFallback) {
   }).addTo(map);
   routeLine.bringToFront();
   var status = document.getElementById("routeStatus");
-  if (status) status.textContent = isFallback ? "Campus path mode" : "Road route";
+  if (status) status.textContent = isFallback ? "Campus gates + paths" : "Road route via campus gate";
+}
+
+function drawCampusNetwork() {
+  if (campusRoadLayer) map.removeLayer(campusRoadLayer);
+  campusRoadLayer = L.layerGroup();
+  CAMPUS_EDGES.forEach(function (edge) {
+    var a = CAMPUS_NODES[edge[0]];
+    var b = CAMPUS_NODES[edge[1]];
+    L.polyline([a, b], {
+      color: "#22d3ee",
+      weight: 3,
+      opacity: 0.48,
+      dashArray: "2, 8",
+      lineCap: "round"
+    }).bindTooltip("Campus road", { sticky: true }).addTo(campusRoadLayer);
+  });
+
+  Object.keys(CAMPUS_GATES).forEach(function (name) {
+    var point = CAMPUS_GATES[name];
+    L.circleMarker(point, {
+      radius: 8,
+      color: "#fff",
+      weight: 2,
+      fillColor: "#f97316",
+      fillOpacity: 1
+    }).bindTooltip(name + " · campus entry", {
+      permanent: true,
+      direction: "top",
+      offset: [0, -8],
+      className: "campus-gate-label"
+    }).addTo(campusRoadLayer);
+  });
+  campusRoadLayer.addTo(map);
 }
 
 /* ── Icons ──────────────────────────────────────────────── */
@@ -249,6 +300,7 @@ window.onload = function () {
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     { attribution: "© OpenStreetMap contributors", maxZoom: 21 }
   );
+  drawCampusNetwork();
 
   /* Leaflet locate events */
   map.on("locationfound", onLocationFound);
@@ -464,7 +516,12 @@ function drawCampusRoute(uLat, uLng, dLat, dLng) {
   routeBusy = true;
   var requestId = ++routeRequestId;
   var fallback = campusRoadFallback(uLat, uLng, dLat, dLng);
-  requestRoadRoute([currentOrigin, [dLat, dLng]], requestId, fallback)
+  var routePoints = [currentOrigin];
+  if (!isInsideCampus(uLat, uLng)) {
+    routePoints.push(nearestGate(uLat, uLng).point);
+  }
+  routePoints.push([dLat, dLng]);
+  requestRoadRoute(routePoints, requestId, fallback)
     .finally(function () { if (requestId === routeRequestId) routeBusy = false; });
 
   /* Distance + walking time uses the road-side destination */
