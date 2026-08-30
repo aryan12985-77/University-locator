@@ -739,13 +739,14 @@ body {
 }
 
 /* ── Map HUD controls ── */
-.map-hud { position:absolute; top:16px; left:16px; right:76px; z-index:500; display:flex; align-items:center; gap:8px; pointer-events:none; }
-.map-status-pill, .map-style-btn, .compass-btn, .map-compass-control span {
+.map-hud { position:absolute; top:16px; left:16px; right:76px; z-index:500; display:flex; align-items:center; flex-wrap:wrap; gap:8px; pointer-events:none; }
+.map-status-pill, .map-style-btn, .compass-btn, .map-compass-control span, .map-progress-pill {
   background:rgba(15,23,42,.88); border:1px solid rgba(255,255,255,.14);
   color:#e2e8f0; backdrop-filter:blur(14px); box-shadow:0 7px 24px rgba(2,8,23,.28);
 }
 .map-status-pill { padding:9px 12px; border-radius:30px; font:600 .7rem Poppins,sans-serif; letter-spacing:.02em; }
 .map-route-pill { padding:9px 12px; border-radius:30px; font:600 .68rem Poppins,sans-serif; color:#c7d2fe; background:rgba(79,70,229,.24); border:1px solid rgba(129,140,248,.3); }
+.map-progress-pill { padding:9px 12px; border-radius:30px; font:600 .66rem Poppins,sans-serif; color:#a5f3fc; white-space:nowrap; }
 .status-live-dot { display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; background:#34d399; box-shadow:0 0 0 4px rgba(52,211,153,.15); }
 .map-style-btn { pointer-events:auto; padding:9px 12px; border-radius:30px; cursor:pointer; font:600 .7rem Poppins,sans-serif; }
 .map-style-btn:hover { background:#4f46e5; }
@@ -753,6 +754,30 @@ body {
 .compass-btn { width:40px; height:40px; border-radius:50%; color:#fb7185; font:800 1rem Poppins,sans-serif; cursor:pointer; transition:transform .25s ease; }
 .map-compass-control span { padding:2px 6px; border-radius:8px; font:500 .58rem Poppins,sans-serif; }
 .locate-glyph { font-size:1.55rem; line-height:1; }
+.nearest-building-popup .leaflet-popup-content-wrapper {
+  background:rgba(15,23,42,.92); color:#e2e8f0;
+  border:1px solid rgba(45,212,191,.5); border-radius:10px;
+  box-shadow:0 6px 18px rgba(2,8,23,.35);
+}
+.nearest-building-popup .leaflet-popup-content {
+  margin:7px 10px; font:600 .68rem Poppins,sans-serif; white-space:nowrap;
+}
+.nearest-building-popup small {
+  display:block; color:#94a3b8; font-size:.58rem; font-weight:400; margin-top:1px;
+}
+.nearest-building-popup .leaflet-popup-tip { background:rgba(15,23,42,.92); }
+.campus-gate-label {
+  background:rgba(15,23,42,.9); border:1px solid rgba(251,146,60,.55);
+  border-radius:7px; color:#fed7aa; font:600 .62rem Poppins,sans-serif;
+  box-shadow:0 3px 12px rgba(2,8,23,.3);
+}
+.campus-gate-label::before { border-top-color:rgba(15,23,42,.9); }
+.campus-centre-label {
+  background:rgba(15,23,42,.9); border:1px solid rgba(34,197,94,.55);
+  border-radius:7px; color:#bbf7d0; font:600 .62rem Poppins,sans-serif;
+  box-shadow:0 3px 12px rgba(2,8,23,.3);
+}
+.campus-centre-label::before { border-top-color:rgba(15,23,42,.9); }
 
 /* ============================================================
    NEW LOGO ICON

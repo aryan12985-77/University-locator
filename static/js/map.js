@@ -27,6 +27,10 @@ var routeRequestId  = 0;
 var lastRouteOrigin = null;
 var routeBusy       = false;
 var campusRoadLayer = null;
+var campusLocations = [];
+var nearestBuildingPopup = null;
+var routeStartPosition = null;
+var distanceTravelled = 0;
 
 /*
  * Editable VGU road graph. Each edge follows a campus-road-like corridor;
@@ -51,6 +55,7 @@ var CAMPUS_NODES = {
   admin: [26.81246, 75.89135],
   southWest: [26.81135, 75.88980],
   mess: [26.81140, 75.89165],
+  cricketGround: [26.812312, 75.892432],
   central: [26.81175, 75.89245],
   hostel: [26.81120, 75.89210],
   tech: [26.81220, 75.89378],
@@ -65,9 +70,10 @@ var CAMPUS_EDGES = [
   ["northEast", "gate1"], ["gate3", "westHub"],
   ["westHub", "admin"], ["admin", "tech"], ["tech", "gate1"],
   ["westHub", "southWest"], ["southWest", "academic"],
-  ["academic", "mess"], ["mess", "central"], ["central", "hostel"],
+  ["academic", "mess"], ["mess", "cricketGround"],
+  ["cricketGround", "central"], ["central", "hostel"],
   ["central", "southEast"], ["southEast", "tech"],
-  ["central", "parking"], ["parking", "sports"], ["sports", "gate1"]
+  ["cricketGround", "parking"], ["parking", "sports"], ["sports", "gate1"]
 ];
 
 // Road-side entrance points for major campus zones. Room coordinates remain
@@ -169,15 +175,39 @@ function campusRoadFallback(uLat, uLng, dLat, dLng) {
   var end = nearestCampusNode(dLat, dLng);
   var inside = isInsideCampus(uLat, uLng);
   var startNode = inside ? start.name : gate.name.toLowerCase().replace(" ", "");
-  var internal = campusPath(startNode, end.name);
   var points = [[uLat, uLng]];
   if (!inside) points.push(gate.point);
-  if (internal.length) points = points.concat(internal);
+
+  /* Cricket Ground is the dependable central wayfinding landmark. */
+  var toCentre = campusPath(startNode, "cricketGround");
+  var fromCentre = end.name === "cricketGround"
+    ? []
+    : campusPath("cricketGround", end.name);
+  if (toCentre.length) points = points.concat(toCentre);
+  if (fromCentre.length) points = points.concat(fromCentre.slice(1));
   points.push([dLat, dLng]);
   return points;
 }
 
-function requestRoadRoute(points, requestId, fallbackPoints) {
+function routeWaypoints(uLat, uLng, dLat, dLng) {
+  var outside = !isInsideCampus(uLat, uLng);
+  var gate = nearestGate(uLat, uLng);
+  var centre = CAMPUS_NODES.cricketGround;
+  var points = [[uLat, uLng]];
+  if (outside) points.push(gate.point);
+  if (haversine(uLat, uLng, centre[0], centre[1]) > 45 &&
+      haversine(dLat, dLng, centre[0], centre[1]) > 45) {
+    points.push(centre);
+  }
+  points.push([dLat, dLng]);
+  return {
+    points: points,
+    outside: outside,
+    gateName: outside ? gate.name : null
+  };
+}
+
+function requestRoadRoute(points, requestId, fallbackPoints, routeLabel) {
   var coordinates = points.map(function (p) { return p[1] + "," + p[0]; }).join(";");
   var url = "https://router.project-osrm.org/route/v1/driving/" +
     coordinates + "?overview=full&geometries=geojson&steps=false";
@@ -193,15 +223,15 @@ function requestRoadRoute(points, requestId, fallbackPoints) {
     var latLngs = data.routes[0].geometry.coordinates.map(function (pair) {
       return [pair[1], pair[0]];
     });
-    drawRouteLine(latLngs, false);
+    drawRouteLine(latLngs, false, routeLabel);
   }).catch(function (error) {
     if (requestId !== routeRequestId) return;
     console.warn("Road routing unavailable; using campus corridors", error);
-    drawRouteLine(fallbackPoints, true);
+    drawRouteLine(fallbackPoints, true, routeLabel);
   });
 }
 
-function drawRouteLine(latLngs, isFallback) {
+function drawRouteLine(latLngs, isFallback, routeLabel) {
   if (routeLine) map.removeLayer(routeLine);
   routeLine = L.polyline(latLngs, {
     color: isFallback ? "#f59e0b" : "#4f46e5",
@@ -213,7 +243,98 @@ function drawRouteLine(latLngs, isFallback) {
   }).addTo(map);
   routeLine.bringToFront();
   var status = document.getElementById("routeStatus");
-  if (status) status.textContent = isFallback ? "Campus gates + paths" : "Road route via campus gate";
+  if (status) status.textContent = routeLabel || (isFallback ? "Campus path mode" : "Road route");
+  updateRouteMetrics();
+}
+
+function distanceAlong(points, startIndex, startPoint) {
+  var total = startPoint ? haversine(startPoint[0], startPoint[1],
+                                     points[startIndex][0], points[startIndex][1]) : 0;
+  for (var i = startIndex; i < points.length - 1; i++) {
+    total += haversine(points[i][0], points[i][1],
+                       points[i + 1][0], points[i + 1][1]);
+  }
+  return total;
+}
+
+function updateRouteMetrics() {
+  if (!routeLine || !lastPosition) return;
+  var points = routeLine.getLatLngs().map(function (point) {
+    return [point.lat, point.lng];
+  });
+  if (points.length < 2) return;
+
+  var nearest = points.reduce(function (best, point, index) {
+    var distance = haversine(lastPosition.lat, lastPosition.lng, point[0], point[1]);
+    return distance < best.distance ? { index: index, distance: distance } : best;
+  }, { index: 0, distance: Infinity });
+  var remaining = distanceAlong(points, nearest.index, [lastPosition.lat, lastPosition.lng]);
+  var directionText = remaining < 25 ? "Arrived" : "—";
+  if (remaining >= 25) {
+    var directionPoint = points[Math.min(nearest.index + 1, points.length - 1)];
+    var direction = bearingBetween(
+      { lat: lastPosition.lat, lng: lastPosition.lng },
+      { lat: directionPoint[0], lng: directionPoint[1] }
+    );
+    directionText = bearingLabel(direction);
+  }
+  var progress = document.getElementById("routeProgress");
+  if (progress) {
+    progress.textContent = formatRouteDistance(remaining) +
+      " left · " + formatRouteDistance(distanceTravelled) + " moved";
+  }
+  var directionReadout = document.getElementById("routeDirectionReadout");
+  if (directionReadout) directionReadout.textContent = "Next: " + directionText;
+}
+
+function formatRouteDistance(distance) {
+  return distance < 1000 ? Math.round(distance) + " m" : (distance / 1000).toFixed(1) + " km";
+}
+
+function bearingLabel(degrees) {
+  var labels = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  return labels[Math.round(degrees / 45) % 8];
+}
+
+function updateNearestBuilding(lat, lng) {
+  if (!isInsideCampus(lat, lng) || !campusLocations.length) {
+    if (nearestBuildingPopup) {
+      map.removeLayer(nearestBuildingPopup);
+      nearestBuildingPopup = null;
+    }
+    return;
+  }
+
+  var buildings = {};
+  campusLocations.forEach(function (location) {
+    var building = location.building;
+    if (!building || building === "Gate" || building === "Main Gate" ||
+        building === "Security" || buildings[building]) return;
+    buildings[building] = location;
+  });
+  var nearest = Object.keys(buildings).map(function (building) {
+    var location = buildings[building];
+    return {
+      name: building,
+      distance: haversine(lat, lng, location.lat, location.lng)
+    };
+  }).sort(function (a, b) { return a.distance - b.distance; })[0];
+  if (!nearest) return;
+
+  if (!nearestBuildingPopup) {
+    nearestBuildingPopup = L.popup({
+      closeButton: false,
+      closeOnClick: false,
+      autoClose: false,
+      offset: [0, -28],
+      className: "nearest-building-popup"
+    }).addTo(map);
+  }
+  nearestBuildingPopup
+    .setLatLng([lat, lng])
+    .setContent("<strong>Near " + nearest.name + "</strong><small>" +
+                formatRouteDistance(nearest.distance) + " away</small>")
+    .openOn(map);
 }
 
 function drawCampusNetwork() {
@@ -246,6 +367,18 @@ function drawCampusNetwork() {
       className: "campus-gate-label"
     }).addTo(campusRoadLayer);
   });
+  L.circleMarker(CAMPUS_NODES.cricketGround, {
+    radius: 6,
+    color: "#fff",
+    weight: 2,
+    fillColor: "#22c55e",
+    fillOpacity: 1
+  }).bindTooltip("Cricket Ground · central route landmark", {
+    permanent: true,
+    direction: "bottom",
+    offset: [0, 8],
+    className: "campus-centre-label"
+  }).addTo(campusRoadLayer);
   campusRoadLayer.addTo(map);
 }
 
@@ -308,6 +441,10 @@ window.onload = function () {
 
   setTimeout(() => map.invalidateSize(), 300);
   initMapControls();
+  fetch("/api/locations")
+    .then(function (response) { return response.json(); })
+    .then(function (locations) { campusLocations = locations || []; })
+    .catch(function (error) { console.warn("Building lookup unavailable", error); });
   loadDestination();
 };
 
@@ -381,6 +518,13 @@ function loadDestination() {
     .then(function(loc) {
       if (!loc || !loc.name) return;
       destinationData = loc;
+      routeStartPosition = null;
+      distanceTravelled = 0;
+      lastRouteOrigin = null;
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
 
       /* Floating panel */
       var panel = document.getElementById("floatingInfo");
@@ -451,22 +595,23 @@ function onLocationFound(e) {
   var currentFix = { lat: lat, lng: lng, time: Date.now() };
 
   /*
-   * Only accept a heading while the user is actually travelling.
-   * This prevents GPS noise and phone-in-hand rotation from turning
-   * the direction arrow while the user is standing still.
+   * Ignore the browser-provided heading: on many phones it is derived from the compass/orientation
+   * sensor and changes when the phone is tilted or rotated in the hand.
+   * Calculate travel direction only from two GPS positions.
    */
-  var speed = typeof e.speed === "number" ? e.speed : 0;
-  var course = (typeof e.heading === "number" && e.heading >= 0) ? e.heading : null;
   if (lastPosition) {
     var elapsed = Math.max(0.5, (currentFix.time - lastPosition.time) / 1000);
     var moved = haversine(lastPosition.lat, lastPosition.lng, lat, lng);
-    if (!course && moved >= 3) course = bearingBetween(lastPosition, currentFix);
-    if (speed < 0.8 && moved / elapsed < 0.8) course = null;
-  }
-  if (course !== null && (speed >= 0.8 || !lastPosition || haversine(lastPosition.lat, lastPosition.lng, lat, lng) >= 3)) {
-    updateMovementHeading(course);
+    if (moved >= 4 && moved / elapsed >= 0.8) {
+      updateMovementHeading(bearingBetween(lastPosition, currentFix));
+      if (moved < 250) distanceTravelled += moved;
+    }
+  } else {
+    routeStartPosition = currentFix;
   }
   lastPosition = currentFix;
+  updateNearestBuilding(lat, lng);
+  updateRouteMetrics();
 
   /* Update or create user marker */
   if (userMarker) {
@@ -516,12 +661,11 @@ function drawCampusRoute(uLat, uLng, dLat, dLng) {
   routeBusy = true;
   var requestId = ++routeRequestId;
   var fallback = campusRoadFallback(uLat, uLng, dLat, dLng);
-  var routePoints = [currentOrigin];
-  if (!isInsideCampus(uLat, uLng)) {
-    routePoints.push(nearestGate(uLat, uLng).point);
-  }
-  routePoints.push([dLat, dLng]);
-  requestRoadRoute(routePoints, requestId, fallback)
+  var plan = routeWaypoints(uLat, uLng, dLat, dLng);
+  var routeLabel = plan.outside
+    ? "Road route via " + plan.gateName + " + Cricket Ground"
+    : "Route via Cricket Ground";
+  requestRoadRoute(plan.points, requestId, fallback, routeLabel)
     .finally(function () { if (requestId === routeRequestId) routeBusy = false; });
 
   /* Distance + walking time uses the road-side destination */
