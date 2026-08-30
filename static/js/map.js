@@ -26,7 +26,7 @@ var streetLayer     = null;
 var routeRequestId  = 0;
 var lastRouteOrigin = null;
 var routeBusy       = false;
-var campusRoadLayer = null;
+var activeGateMarker = null;
 var campusLocations = [];
 var nearestBuildingPopup = null;
 var routeStartPosition = null;
@@ -170,40 +170,49 @@ function getRoadDestination() {
 }
 
 function campusRoadFallback(uLat, uLng, dLat, dLng) {
-  var gate = nearestGate(uLat, uLng);
-  var start = nearestCampusNode(uLat, uLng);
-  var end = nearestCampusNode(dLat, dLng);
-  var inside = isInsideCampus(uLat, uLng);
-  var startNode = inside ? start.name : gate.name.toLowerCase().replace(" ", "");
+  var plan = campusRoutePlan(uLat, uLng, dLat, dLng);
   var points = [[uLat, uLng]];
-  if (!inside) points.push(gate.point);
-
-  /* Cricket Ground is the dependable central wayfinding landmark. */
-  var toCentre = campusPath(startNode, "cricketGround");
-  var fromCentre = end.name === "cricketGround"
-    ? []
-    : campusPath("cricketGround", end.name);
-  if (toCentre.length) points = points.concat(toCentre);
-  if (fromCentre.length) points = points.concat(fromCentre.slice(1));
+  if (plan.outside) points.push(plan.gate.point);
+  if (plan.path.length) {
+    points = points.concat(plan.path.slice(plan.outside ? 1 : 0));
+  }
   points.push([dLat, dLng]);
   return points;
 }
 
-function routeWaypoints(uLat, uLng, dLat, dLng) {
+function campusRoutePlan(uLat, uLng, dLat, dLng) {
   var outside = !isInsideCampus(uLat, uLng);
   var gate = nearestGate(uLat, uLng);
-  var centre = CAMPUS_NODES.cricketGround;
+  var start = nearestCampusNode(uLat, uLng);
+  var end = nearestCampusNode(dLat, dLng);
+  var startNode = outside ? gate.name.toLowerCase().replace(" ", "") : start.name;
+  var path = campusPath(startNode, end.name);
+  return {
+    outside: outside,
+    gate: gate,
+    start: start,
+    end: end,
+    path: path,
+    usesCricketGround: path.some(function (point) {
+      return point[0] === CAMPUS_NODES.cricketGround[0] &&
+             point[1] === CAMPUS_NODES.cricketGround[1];
+    })
+  };
+}
+
+function routeWaypoints(uLat, uLng, dLat, dLng) {
+  var plan = campusRoutePlan(uLat, uLng, dLat, dLng);
   var points = [[uLat, uLng]];
-  if (outside) points.push(gate.point);
-  if (haversine(uLat, uLng, centre[0], centre[1]) > 45 &&
-      haversine(dLat, dLng, centre[0], centre[1]) > 45) {
-    points.push(centre);
+  if (plan.outside) points.push(plan.gate.point);
+  if (plan.path.length) {
+    points = points.concat(plan.path.slice(plan.outside ? 1 : 0));
   }
   points.push([dLat, dLng]);
   return {
     points: points,
-    outside: outside,
-    gateName: outside ? gate.name : null
+    outside: plan.outside,
+    gateName: plan.outside ? plan.gate.name : null,
+    usesCricketGround: plan.usesCricketGround
   };
 }
 
@@ -234,10 +243,10 @@ function requestRoadRoute(points, requestId, fallbackPoints, routeLabel) {
 function drawRouteLine(latLngs, isFallback, routeLabel) {
   if (routeLine) map.removeLayer(routeLine);
   routeLine = L.polyline(latLngs, {
-    color: isFallback ? "#f59e0b" : "#4f46e5",
+    color: "#4f46e5",
     weight: 6,
     opacity: 0.95,
-    dashArray: isFallback ? "5, 9" : null,
+    dashArray: null,
     lineCap: "round",
     lineJoin: "round"
   }).addTo(map);
@@ -337,49 +346,24 @@ function updateNearestBuilding(lat, lng) {
     .openOn(map);
 }
 
-function drawCampusNetwork() {
-  if (campusRoadLayer) map.removeLayer(campusRoadLayer);
-  campusRoadLayer = L.layerGroup();
-  CAMPUS_EDGES.forEach(function (edge) {
-    var a = CAMPUS_NODES[edge[0]];
-    var b = CAMPUS_NODES[edge[1]];
-    L.polyline([a, b], {
-      color: "#22d3ee",
-      weight: 3,
-      opacity: 0.48,
-      dashArray: "2, 8",
-      lineCap: "round"
-    }).bindTooltip("Campus road", { sticky: true }).addTo(campusRoadLayer);
-  });
-
-  Object.keys(CAMPUS_GATES).forEach(function (name) {
-    var point = CAMPUS_GATES[name];
-    L.circleMarker(point, {
-      radius: 8,
-      color: "#fff",
-      weight: 2,
-      fillColor: "#f97316",
-      fillOpacity: 1
-    }).bindTooltip(name + " · campus entry", {
-      permanent: true,
-      direction: "top",
-      offset: [0, -8],
-      className: "campus-gate-label"
-    }).addTo(campusRoadLayer);
-  });
-  L.circleMarker(CAMPUS_NODES.cricketGround, {
-    radius: 6,
+function updateActiveGateMarker(plan) {
+  if (activeGateMarker) {
+    map.removeLayer(activeGateMarker);
+    activeGateMarker = null;
+  }
+  if (!plan.outside) return;
+  activeGateMarker = L.circleMarker(plan.gate.point, {
+    radius: 8,
     color: "#fff",
     weight: 2,
-    fillColor: "#22c55e",
+    fillColor: "#f97316",
     fillOpacity: 1
-  }).bindTooltip("Cricket Ground · central route landmark", {
+  }).bindTooltip(plan.gate.name + " · campus entry", {
     permanent: true,
-    direction: "bottom",
-    offset: [0, 8],
-    className: "campus-centre-label"
-  }).addTo(campusRoadLayer);
-  campusRoadLayer.addTo(map);
+    direction: "top",
+    offset: [0, -8],
+    className: "campus-gate-label"
+  }).addTo(map);
 }
 
 /* ── Icons ──────────────────────────────────────────────── */
@@ -433,8 +417,6 @@ window.onload = function () {
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     { attribution: "© OpenStreetMap contributors", maxZoom: 21 }
   );
-  drawCampusNetwork();
-
   /* Leaflet locate events */
   map.on("locationfound", onLocationFound);
   map.on("locationerror", onLocationError);
@@ -660,11 +642,13 @@ function drawCampusRoute(uLat, uLng, dLat, dLng) {
   lastRouteOrigin = currentOrigin;
   routeBusy = true;
   var requestId = ++routeRequestId;
-  var fallback = campusRoadFallback(uLat, uLng, dLat, dLng);
   var plan = routeWaypoints(uLat, uLng, dLat, dLng);
+  var fallback = campusRoadFallback(uLat, uLng, dLat, dLng);
+  updateActiveGateMarker(plan);
   var routeLabel = plan.outside
-    ? "Road route via " + plan.gateName + " + Cricket Ground"
-    : "Route via Cricket Ground";
+    ? "Road route via " + plan.gateName
+    : "Shortest campus route";
+  if (plan.usesCricketGround) routeLabel += " · via Cricket Ground";
   requestRoadRoute(plan.points, requestId, fallback, routeLabel)
     .finally(function () { if (requestId === routeRequestId) routeBusy = false; });
 
