@@ -26,6 +26,26 @@
 <canvas id="earthCanvas" class="earth-globe" width="190" height="190"></canvas>
 <div class="map-grid-bg"></div>
 <div class="float-icons" id="floatIcons"></div>
+<div class="ambient-field" id="ambientField" aria-hidden="true">
+  <svg class="ambient-network" viewBox="0 0 900 700" preserveAspectRatio="none">
+    <path class="network-line" d="M90 170 C210 115 275 210 365 155 S560 95 810 185"/>
+    <path class="network-line" d="M40 505 C185 430 250 565 385 465 S620 390 865 510"/>
+    <path class="network-line" d="M195 80 C250 220 225 330 345 380 S570 470 720 610"/>
+    <path class="network-line" d="M640 65 C585 180 635 270 545 345 S390 520 315 660"/>
+    <path class="network-route" d="M165 430 C285 360 345 395 435 300 S610 205 750 245"/>
+    <circle class="network-node node-a" cx="90" cy="170" r="4"/>
+    <circle class="network-node node-b" cx="365" cy="155" r="4"/>
+    <circle class="network-node node-c" cx="810" cy="185" r="4"/>
+    <circle class="network-node node-d" cx="385" cy="465" r="4"/>
+    <circle class="network-node node-e" cx="720" cy="610" r="4"/>
+    <circle class="network-node node-f" cx="750" cy="245" r="6"/>
+    <circle class="route-beacon" r="7">
+      <animateMotion dur="5.5s" repeatCount="indefinite"
+        path="M165 430 C285 360 345 395 435 300 S610 205 750 245"/>
+    </circle>
+  </svg>
+  <span class="ambient-scanline"></span>
+</div>
 
 <div class="home-page">
 
@@ -187,16 +207,26 @@
 ═══════════════════════════════════════════════════════ */
 function initFloatIcons() {
   const wrap = document.getElementById('floatIcons');
-  ['📍','🗺','📌','🧭','📐','🏫','📍','🗺','📌'].forEach((ic) => {
+  ['node','ring','node','crosshair','ring','node','crosshair','node','ring'].forEach((type) => {
     const el = document.createElement('div');
-    el.className = 'float-ic';
+    el.className = `float-ic float-${type}`;
     el.style.cssText =
       `left:${5+Math.random()*90}%;top:${5+Math.random()*90}%;` +
       `animation-duration:${14+Math.random()*12}s;animation-delay:${Math.random()*10}s;` +
-      `font-size:${10+Math.random()*10}px;`;
-    el.textContent = ic;
+      `--drift:${8+Math.random()*18}px;--size:${5+Math.random()*7}px;`;
     wrap.appendChild(el);
   });
+}
+
+function initAmbientField() {
+  const field = document.getElementById('ambientField');
+  if (!field) return;
+  window.addEventListener('pointermove', (event) => {
+    const x = ((event.clientX / window.innerWidth) - 0.5) * 2;
+    const y = ((event.clientY / window.innerHeight) - 0.5) * 2;
+    field.style.setProperty('--mx', `${(x * 12).toFixed(2)}px`);
+    field.style.setProperty('--my', `${(y * 9).toFixed(2)}px`);
+  }, { passive: true });
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -263,7 +293,7 @@ function initGlobe() {
     ctx.beginPath(); ctx.arc(CX, CY, R+2, 0, Math.PI*2); ctx.stroke();
     ctx.restore();
 
-    rot += 0.28;
+   rot += 0.42;
     requestAnimationFrame(drawGlobe);
   }
   drawGlobe();
@@ -671,6 +701,7 @@ function initHomePage() {
   homeInited = true;
   initGlobe();
   initFloatIcons();
+  initAmbientField();
   smDraw();
   triggerEntrance();
 }

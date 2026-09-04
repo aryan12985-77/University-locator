@@ -920,6 +920,105 @@ body {
 }
 
 /* ============================================================
+   INTERACTIVE AMBIENT CAMPUS NETWORK
+   Vector-only background layer; it stays behind all home content.
+   ============================================================ */
+.ambient-field {
+  --mx: 0px;
+  --my: 0px;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+  opacity: .92;
+  transform: translate3d(var(--mx), var(--my), 0);
+  transition: transform .45s cubic-bezier(.2,.7,.2,1);
+  will-change: transform;
+}
+.ambient-network {
+  position: absolute;
+  width: min(980px, 112vw);
+  height: min(760px, 94vh);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+}
+.network-line,
+.network-route {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.network-line {
+  stroke: rgba(129,140,248,.19);
+  stroke-width: 1.1;
+  stroke-dasharray: 2 18;
+  animation: campusSignal 18s linear infinite;
+}
+.network-line:nth-child(2) { animation-duration: 23s; animation-delay: -7s; }
+.network-line:nth-child(3) { animation-duration: 20s; animation-delay: -11s; }
+.network-line:nth-child(4) { animation-duration: 26s; animation-delay: -3s; }
+.network-route {
+  stroke: rgba(103,232,249,.52);
+  stroke-width: 1.8;
+  stroke-dasharray: 7 16;
+  filter: drop-shadow(0 0 6px rgba(103,232,249,.6));
+  animation: routeSignal 5s linear infinite;
+}
+.network-node {
+  fill: #818cf8;
+  opacity: .72;
+  filter: drop-shadow(0 0 6px rgba(129,140,248,.75));
+  animation: nodeBlink 2.8s ease-in-out infinite;
+}
+.node-b { animation-delay: -.7s; }
+.node-c { animation-delay: -1.5s; }
+.node-d { animation-delay: -.3s; }
+.node-e { animation-delay: -2s; }
+.node-f {
+  fill: #67e8f9;
+  opacity: .95;
+  filter: drop-shadow(0 0 10px rgba(103,232,249,.9));
+  animation: destinationPing 2s ease-in-out infinite;
+}
+.route-beacon {
+  fill: #fff;
+  filter: drop-shadow(0 0 8px rgba(103,232,249,1));
+}
+.ambient-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(103,232,249,.4), transparent);
+  box-shadow: 0 0 18px 2px rgba(103,232,249,.16);
+  animation: scanDown 12s ease-in-out infinite;
+}
+@keyframes campusSignal {
+  to { stroke-dashoffset: -120; }
+}
+@keyframes routeSignal {
+  to { stroke-dashoffset: -92; }
+}
+@keyframes nodeBlink {
+  0%,100% { opacity: .28; transform: scale(.8); transform-origin: center; }
+  50% { opacity: .9; transform: scale(1.35); transform-origin: center; }
+}
+@keyframes destinationPing {
+  0%,100% { opacity: .55; transform: scale(.85); transform-origin: center; }
+  50% { opacity: 1; transform: scale(1.55); transform-origin: center; }
+}
+@keyframes scanDown {
+  0%, 12% { transform: translateY(0); opacity: 0; }
+  24% { opacity: .7; }
+  80% { opacity: .24; }
+  100% { transform: translateY(116vh); opacity: 0; }
+}
+
+/* ============================================================
    FLOATING CAMPUS ICONS
    ============================================================ */
 .float-icons {
@@ -931,16 +1030,57 @@ body {
 }
 .float-ic {
   position: absolute;
+  width: var(--size);
+  height: var(--size);
+  border: 1px solid rgba(103,232,249,.68);
+  border-radius: 50%;
   opacity: 0;
   animation: floatDrift ease-in-out infinite;
-  filter: blur(0.3px);
+  filter: drop-shadow(0 0 5px rgba(103,232,249,.7));
+}
+.float-ic::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  background: #67e8f9;
+  transform: translate(-50%, -50%);
+}
+.float-ring {
+  width: calc(var(--size) * 2.1);
+  height: calc(var(--size) * 2.1);
+  border-color: rgba(129,140,248,.48);
+}
+.float-ring::after { display: none; }
+.float-crosshair {
+  border-color: transparent;
+  border-radius: 0;
+}
+.float-crosshair::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border: 1px solid rgba(129,140,248,.64);
+  border-radius: 50%;
+}
+.float-crosshair::after {
+  width: 70%;
+  height: 1px;
+  left: 15%;
+  top: 50%;
+  border-radius: 0;
+  transform: none;
+  box-shadow: 0 -4px 0 rgba(103,232,249,.6), 0 4px 0 rgba(103,232,249,.6);
 }
 @keyframes floatDrift {
-  0%   { transform: translateY(20px) translateX(-10px) rotate(-8deg); opacity: 0; }
-  15%  { opacity: 0.18; }
-  50%  { transform: translateY(-30px) translateX(14px) rotate(6deg); opacity: 0.22; }
-  85%  { opacity: 0.14; }
-  100% { transform: translateY(20px) translateX(-10px) rotate(-8deg); opacity: 0; }
+  0%   { transform: translateY(var(--drift)) translateX(calc(var(--drift) * -0.7)) rotate(-8deg); opacity: 0; }
+  15%  { opacity: 0.24; }
+  50%  { transform: translateY(calc(var(--drift) * -1)) translateX(var(--drift)) rotate(6deg); opacity: 0.68; }
+  85%  { opacity: 0.18; }
+  100% { transform: translateY(var(--drift)) translateX(calc(var(--drift) * -0.7)) rotate(-8deg); opacity: 0; }
 }
 
 /* ============================================================
