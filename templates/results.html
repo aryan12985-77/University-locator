@@ -100,6 +100,21 @@
       </div>
     </div>
 
+    {% if location.panorama_url %}
+    <!-- 360° indoor scene for locations with a published photosphere. -->
+    <div class="glass panorama-entry-card a1">
+      <div>
+        <div class="section-title">Indoor 360° View</div>
+        <p class="map-desc">
+          Look around LT-202, zoom in on the room sign, and follow the visible corridor arrows.
+        </p>
+      </div>
+      <a class="btn-primary" href="{{ location.panorama_url }}">
+        ◉ Open 360° View
+      </a>
+    </div>
+    {% endif %}
+
     <!-- DIRECTIONS CARD -->
     <div class="glass directions-card a2">
       <div class="section-title">Step-by-Step Directions</div>

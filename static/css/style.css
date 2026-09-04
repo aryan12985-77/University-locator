@@ -778,6 +778,63 @@ body {
   box-shadow:0 3px 12px rgba(2,8,23,.3);
 }
 .campus-centre-label::before { border-top-color:rgba(15,23,42,.9); }
+.panorama-entry-card {
+  display:flex; align-items:center; justify-content:space-between; gap:18px;
+  padding:18px 20px;
+}
+.panorama-entry-card .map-desc { margin:4px 0 0; }
+.panorama-page {
+  height:100vh; overflow:hidden; background:#020617; color:#e2e8f0;
+  display:flex; flex-direction:column; font-family:Poppins,sans-serif;
+}
+.panorama-topbar {
+  height:64px; flex:0 0 64px; display:flex; align-items:center;
+  justify-content:space-between; padding:0 18px;
+  background:rgba(15,23,42,.94); border-bottom:1px solid rgba(255,255,255,.1);
+  position:relative; z-index:20;
+}
+.panorama-topbar .logo { color:#f8fafc; text-decoration:none; font-weight:700; }
+.panorama-back { padding:8px 14px; font-size:.78rem; border-radius:50px; }
+.panorama-shell { flex:1; min-height:0; position:relative; }
+#panorama { width:100%; height:100%; background:#020617; }
+.panorama-fallback {
+  display:none; position:absolute; inset:0; overflow:hidden; background:#020617;
+  cursor:grab; touch-action:none;
+}
+.panorama-fallback.is-active { display:block; }
+.panorama-fallback:active { cursor:grabbing; }
+.panorama-fallback img {
+  position:absolute; top:50%; left:50%; height:100%; width:auto; max-width:none;
+  user-select:none; -webkit-user-drag:none; transform-origin:center center;
+  will-change:transform;
+}
+.panorama-scene-label {
+  position:absolute; top:16px; left:16px; z-index:10; display:flex;
+  flex-direction:column; gap:2px; padding:10px 14px; border-radius:12px;
+  background:rgba(15,23,42,.82); border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(14px); box-shadow:0 8px 24px rgba(2,8,23,.3);
+}
+.panorama-scene-label strong { font-size:.86rem; }
+.panorama-scene-label span { color:#94a3b8; font-size:.68rem; }
+.panorama-controls {
+  position:absolute; right:16px; bottom:22px; z-index:10;
+  display:flex; gap:7px; padding:8px; border-radius:14px;
+  background:rgba(15,23,42,.86); border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(14px);
+}
+.panorama-controls button {
+  width:38px; height:38px; border:1px solid rgba(255,255,255,.13);
+  border-radius:10px; background:rgba(255,255,255,.08); color:#f8fafc;
+  cursor:pointer; font:700 1.2rem Poppins,sans-serif;
+}
+.panorama-controls button:hover { background:#4f46e5; }
+.panorama-help {
+  position:absolute; left:50%; bottom:26px; z-index:9; transform:translateX(-50%);
+  color:#cbd5e1; font-size:.68rem; padding:7px 12px; border-radius:20px;
+  background:rgba(15,23,42,.72); pointer-events:none; white-space:nowrap;
+}
+.panorama-page .pnlm-container { font-family:Poppins,sans-serif; }
+.panorama-page .pnlm-controls-container { display:none; }
 
 /* ============================================================
    NEW LOGO ICON
@@ -1343,6 +1400,11 @@ input.shake { animation: shake 0.4s ease; }
   .map-btn-row { flex-direction: column; }
   .btn-primary, .btn-secondary { justify-content: center; }
   .loc-title { font-size: 1.1rem; }
+  .panorama-entry-card { align-items:flex-start; flex-direction:column; }
+  .panorama-entry-card .btn-primary { width:100%; }
+  .panorama-scene-label { top:10px; left:10px; }
+  .panorama-controls { right:10px; bottom:14px; }
+  .panorama-help { bottom:78px; font-size:.58rem; }
 }
 @media (min-width: 541px) {
   .hero { padding: 40px 32px 64px; }

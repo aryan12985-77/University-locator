@@ -5,11 +5,37 @@ Maintenance note:
 - Frontend pages are in templates/; browser behavior is in static/js/.
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, abort
 import sqlite3
 import json
 
 app = Flask(__name__)
+
+# Panorama scenes are intentionally allowlisted so only published campus
+# scenes can be opened by URL. Add the next real photosphere here when it is
+# captured and connected to an indoor hotspot.
+PANORAMA_SCENES = {
+    "lt-202": {
+        "id": "lt-202",
+        "title": "LT-202",
+        "building": "Tech Block",
+        "floor": "2nd Floor",
+        "image": "/static/panoramas/lt-202.jpg",
+        "haov": 360,
+        "vaov": 120,
+        "v_offset": 0,
+    }
+}
+
+
+def panorama_for_location(name):
+    """Return a published panorama URL for a location, if one exists."""
+    scene = next(
+        (scene for scene in PANORAMA_SCENES.values()
+         if scene["title"].lower() == (name or "").lower()),
+        None,
+    )
+    return f"/panorama/{scene['id']}" if scene else ""
 
 
 # Allow iframe embedding and disable cache for Replit preview
@@ -57,6 +83,8 @@ def directions():
     conn.close()
 
     location = dict(row) if row else None
+    if location:
+        location["panorama_url"] = panorama_for_location(location["name"])
     return render_template("results.html", location=location, query=query)
 
 
@@ -86,8 +114,19 @@ def search_location():
     conn.close()
 
     if row:
-        return jsonify(dict(row))
+        location = dict(row)
+        location["panorama_url"] = panorama_for_location(location["name"])
+        return jsonify(location)
     return jsonify({})
+
+
+# ---------------- 360° INDOOR VIEWER ----------------
+@app.route("/panorama/<scene_id>")
+def panorama(scene_id):
+    scene = PANORAMA_SCENES.get(scene_id)
+    if not scene:
+        abort(404)
+    return render_template("panorama.html", scene=scene)
 
 
 # ---------------- SUGGEST ----------------

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>{{ scene.title }} — Indoor 360° View</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:,">
+</head>
+<body class="panorama-page">
+  <header class="panorama-topbar">
+    <a class="logo" href="/">Campus Navigator</a>
+    <a class="btn-secondary panorama-back" href="/directions?q={{ scene.title | urlencode }}">← Back</a>
+  </header>
+
+  <main class="panorama-shell">
+    <div id="panorama" aria-label="Interactive 360 degree view of {{ scene.title }}"></div>
+    <div id="fallbackPanorama" class="panorama-fallback" aria-label="Draggable panorama fallback">
+      <img src="{{ scene.image }}" alt="{{ scene.title }} corridor panorama">
+    </div>
+
+    <div class="panorama-scene-label">
+      <strong>{{ scene.title }}</strong>
+      <span>{{ scene.building }} · {{ scene.floor }}</span>
+    </div>
+
+    <div class="panorama-controls" aria-label="Panorama controls">
+      <button id="zoomOut" type="button" title="Zoom out" aria-label="Zoom out">−</button>
+      <button id="resetView" type="button" title="Reset view" aria-label="Reset view">↺</button>
+      <button id="zoomIn" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+      <button id="fullscreen" type="button" title="Fullscreen" aria-label="Fullscreen">⛶</button>
+    </div>
+
+    <div class="panorama-help">Drag to look around · Pinch or use + / − to zoom</div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+  <script>
+    const SCENE = {{ scene | tojson }};
+    let viewer = null;
+    const fallback = document.getElementById("fallbackPanorama");
+    const fallbackImage = fallback.querySelector("img");
+    const fallbackState = { x: 0, y: 0, scale: 1, pointer: null };
+
+    function hasWebGL() {
+      try {
+        const canvas = document.createElement("canvas");
+        return Boolean(window.WebGLRenderingContext &&
+          (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")));
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function renderFallback() {
+      const bounds = fallback.getBoundingClientRect();
+      const width = fallbackImage.naturalWidth * fallbackState.scale *
+        (bounds.height / fallbackImage.naturalHeight);
+      const height = fallbackImage.naturalHeight * fallbackState.scale *
+        (bounds.height / fallbackImage.naturalHeight);
+      const maxX = Math.max(0, (width - bounds.width) / 2);
+      const maxY = Math.max(0, (height - bounds.height) / 2);
+      fallbackState.x = Math.max(-maxX, Math.min(maxX, fallbackState.x));
+      fallbackState.y = Math.max(-maxY, Math.min(maxY, fallbackState.y));
+      fallbackImage.style.transform =
+        "translate(calc(-50% + " + fallbackState.x + "px), calc(-50% + " +
+        fallbackState.y + "px)) scale(" + fallbackState.scale + ")";
+    }
+
+    function initFallback() {
+      document.getElementById("panorama").style.display = "none";
+      fallback.classList.add("is-active");
+      fallbackImage.addEventListener("load", renderFallback);
+      renderFallback();
+    }
+
+    function initViewer() {
+      viewer = pannellum.viewer("panorama", {
+        type: "equirectangular",
+        panorama: SCENE.image,
+        autoLoad: true,
+        showControls: true,
+        compass: true,
+        hfov: 100,
+        minHfov: 40,
+        maxHfov: 120,
+        haov: SCENE.haov,
+        vaov: SCENE.vaov,
+        vOffset: SCENE.v_offset,
+        orientationOnByDefault: false,
+        mouseZoom: true,
+        draggable: true,
+        friction: 0.15
+      });
+      viewer.on("error", initFallback);
+    }
+
+    if (hasWebGL()) initViewer();
+    else initFallback();
+
+    fallback.addEventListener("pointerdown", (event) => {
+      fallback.setPointerCapture(event.pointerId);
+      fallbackState.pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    });
+    fallback.addEventListener("pointermove", (event) => {
+      if (!fallbackState.pointer || fallbackState.pointer.id !== event.pointerId) return;
+      fallbackState.x += event.clientX - fallbackState.pointer.x;
+      fallbackState.y += event.clientY - fallbackState.pointer.y;
+      fallbackState.pointer.x = event.clientX;
+      fallbackState.pointer.y = event.clientY;
+      renderFallback();
+    });
+    fallback.addEventListener("pointerup", () => { fallbackState.pointer = null; });
+    fallback.addEventListener("pointercancel", () => { fallbackState.pointer = null; });
+
+    document.getElementById("zoomIn").addEventListener("click", () => {
+      if (viewer) viewer.setHfov(Math.max(40, viewer.getHfov() - 10));
+      else {
+        fallbackState.scale = Math.min(3, fallbackState.scale + 0.2);
+        renderFallback();
+      }
+    });
+    document.getElementById("zoomOut").addEventListener("click", () => {
+      if (viewer) viewer.setHfov(Math.min(120, viewer.getHfov() + 10));
+      else {
+        fallbackState.scale = Math.max(1, fallbackState.scale - 0.2);
+        renderFallback();
+      }
+    });
+    document.getElementById("resetView").addEventListener("click", () => {
+      if (viewer) {
+        viewer.setYaw(0);
+        viewer.setPitch(0);
+        viewer.setHfov(100);
+      } else {
+        fallbackState.x = 0;
+        fallbackState.y = 0;
+        fallbackState.scale = 1;
+        renderFallback();
+      }
+    });
+    document.getElementById("fullscreen").addEventListener("click", () => {
+      if (viewer) viewer.toggleFullscreen();
+      else if (fallback.requestFullscreen) fallback.requestFullscreen();
+    });
+  </script>
+</body>
+</html>
