@@ -1,384 +1,192 @@
 /* ================================================================
-   CAMPUS NAVIGATOR — Intro Animation
-   "Signal Trace": GPS acquires, roads draw, buildings materialise,
-   routing dots travel, then the home page reveals.
-   Total runtime: ~9 s
-   ================================================================ */
+   Campus Navigator — "Compass Bloom" first-visit intro
+   A short, mobile-friendly constellation animation that reveals the
+   campus compass in 2.6 seconds. It runs once per browser tab session.
+================================================================ */
 (function () {
   'use strict';
 
   const overlay = document.getElementById('introOverlay');
-  const canvas  = document.getElementById('introCanvas');
-  const ctx     = canvas.getContext('2d');
+  const canvas = document.getElementById('introCanvas');
+  if (!overlay || !canvas) return;
 
-  /* ── resize canvas to fill screen ── */
+  const ctx = canvas.getContext('2d');
+  const SESSION_KEY = 'vgu-campus-intro-seen';
+  const reducedMotion = window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let complete = false;
+
+  function finish() {
+    if (complete) return;
+    complete = true;
+    window.__campusIntroComplete = true;
+    overlay.style.opacity = '0';
+    window.setTimeout(function () {
+      overlay.style.display = 'none';
+      document.dispatchEvent(new CustomEvent('introComplete'));
+    }, 360);
+  }
+
+  let alreadySeen = false;
+  try {
+    alreadySeen = sessionStorage.getItem(SESSION_KEY) === '1';
+    if (!alreadySeen) sessionStorage.setItem(SESSION_KEY, '1');
+  } catch (error) {
+    /* Private browsing can block storage; play once for that page load. */
+  }
+
+  if (alreadySeen || reducedMotion) {
+    finish();
+    return;
+  }
+
+  const COLORS = {
+    bg: '#07111f',
+    indigo: '#818cf8',
+    cyan: '#67e8f9',
+    mint: '#6ee7b7',
+    white: '#f8fafc',
+    muted: '#94a3b8'
+  };
+  const duration = 2600;
+  const start = performance.now();
+  const points = [
+    { angle: -Math.PI * 0.78, radius: 0.27, label: 'Learn' },
+    { angle: -Math.PI * 0.08, radius: 0.31, label: 'Explore' },
+    { angle: Math.PI * 0.55, radius: 0.28, label: 'Arrive' }
+  ];
+
   function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(window.innerWidth * ratio);
+    canvas.height = Math.round(window.innerHeight * ratio);
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   }
   resize();
   window.addEventListener('resize', resize);
 
-  /* ── helpers ── */
-  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-  function prog(t, a, b)    { return clamp((t - a) / (b - a), 0, 1); }
-  function eOut(t)  { return 1 - Math.pow(1 - t, 3); }
-  function eIO(t)   { return t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
-  function lerp(a,b,t){ return a + (b-a)*t; }
-
-  /* ── colour helpers ── */
-  function hex2rgb(h) {
-    const v = parseInt(h.replace('#',''), 16);
-    return [(v>>16)&255, (v>>8)&255, v&255];
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
   }
-  function rgba(h, a) { const [r,g,b] = hex2rgb(h); return `rgba(${r},${g},${b},${a})`; }
-
-  /* ── palette (matches app theme) ── */
-  const C = {
-    bg    : '#060d1a',
-    indigo: '#4f46e5',
-    violet: '#818cf8',
-    cyan  : '#06b6d4',
-    teal  : '#67e8f9',
-    green : '#10b981',
-    white : '#f1f5f9',
-    muted : '#94a3b8',
-  };
-
-  /* ── campus "map" definition (angles in degrees, lengths relative) ── */
-  const ROADS = [
-    { angle:  10, frac: .28, label: 'Tech Block' },
-    { angle:  60, frac: .22, label: 'Library'    },
-    { angle: 100, frac: .32, label: 'Auditorium' },
-    { angle: 145, frac: .24, label: 'Gate 1'     },
-    { angle: 190, frac: .27, label: 'Admin Block' },
-    { angle: 235, frac: .21, label: 'Hostel'     },
-    { angle: 275, frac: .30, label: 'Sports'     },
-    { angle: 325, frac: .23, label: 'Mess'       },
-  ];
-
-  /* ── routing dots that will travel roads after they appear ── */
-  const DOT_DEFS = [
-    { ri: 0, phase: 0.00, speed: 0.32, col: C.indigo },
-    { ri: 2, phase: 0.40, speed: 0.26, col: C.cyan   },
-    { ri: 4, phase: 0.15, speed: 0.38, col: C.green  },
-    { ri: 6, phase: 0.65, speed: 0.29, col: C.violet },
-  ];
-  /* mutable dot state */
-  const dotState = DOT_DEFS.map(d => ({ ...d, t: d.phase }));
-
-  /* ── timing (seconds) ── */
-  const T = {
-    bgFade   : [0.0,  0.6],
-    pinDrop  : [0.6,  1.8],
-    rings    : [1.6,  8.0],   // ongoing pulses
-    roads    : [2.0,  5.2],   // staggered; each road takes 0.7 s to draw
-    buildings: [2.5,  5.8],   // appear after their road finishes
-    dots     : [4.5,  7.0],
-    radar    : [5.8,  7.0],
-    fadeOut  : [7.2,  8.2],
-  };
-
-  /* ── computed road endpoints (recalculated each frame) ── */
-  function buildRoads(cx, cy, base) {
-    return ROADS.map(r => {
-      const rad = r.angle * Math.PI / 180;
-      const len = r.frac * base;
-      return {
-        x1: cx, y1: cy,
-        x2: cx + Math.cos(rad) * len,
-        y2: cy - Math.sin(rad) * len,
-        len, label: r.label,
-      };
-    });
+  function ease(value) {
+    value = clamp(value, 0, 1);
+    return 1 - Math.pow(1 - value, 3);
   }
-
-  /* ── pin teardrop path ── */
-  function drawPin(x, y, size, alpha) {
-    ctx.save();
-    ctx.globalAlpha = alpha;
-
-    /* glow halo */
-    const grd = ctx.createRadialGradient(x, y+size*0.5, 2, x, y+size*0.5, size*1.8);
-    grd.addColorStop(0, rgba(C.indigo, 0.45));
-    grd.addColorStop(1, rgba(C.indigo, 0));
-    ctx.fillStyle = grd;
-    ctx.beginPath();
-    ctx.ellipse(x, y+size*0.6, size*1.5, size*0.7, 0, 0, Math.PI*2);
-    ctx.fill();
-
-    /* teardrop body */
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = C.indigo;
-    const gBody = ctx.createLinearGradient(x-size, y-size, x+size, y+size);
-    gBody.addColorStop(0, C.violet);
-    gBody.addColorStop(1, C.cyan);
-    ctx.fillStyle = gBody;
-    ctx.beginPath();
-    ctx.arc(x, y - size*0.15, size, Math.PI, 0);
-    ctx.bezierCurveTo(x + size, y - size*0.15, x + size*0.35, y + size*1.1, x, y + size*1.5);
-    ctx.bezierCurveTo(x - size*0.35, y + size*1.1, x - size, y - size*0.15, x, y - size*0.15);
-    ctx.fill();
-
-    /* inner white dot */
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = 'white';
-    ctx.beginPath();
-    ctx.arc(x, y - size*0.15, size*0.38, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
+  function rgba(hex, alpha) {
+    const value = parseInt(hex.slice(1), 16);
+    return 'rgba(' + ((value >> 16) & 255) + ',' +
+      ((value >> 8) & 255) + ',' + (value & 255) + ',' + alpha + ')';
   }
-
-  /* ── glowing road line ── */
-  function drawRoad(x1, y1, x2, y2, p, alpha) {
-    const ex = lerp(x1, x2, p), ey = lerp(y1, y2, p);
-
-    /* outer glow */
-    ctx.save();
-    ctx.globalAlpha = alpha * 0.35;
-    ctx.strokeStyle = C.indigo;
-    ctx.lineWidth   = 7;
-    ctx.shadowBlur  = 14;
-    ctx.shadowColor = C.indigo;
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(ex,ey); ctx.stroke();
-    ctx.restore();
-
-    /* dashed core */
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = C.violet;
-    ctx.lineWidth   = 1.8;
-    ctx.setLineDash([7, 5]);
-    ctx.lineDashOffset = -performance.now() * 0.03;
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(ex,ey); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    /* leading bright spark */
-    if (p < 0.98) {
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle  = C.teal;
-      ctx.shadowBlur = 14; ctx.shadowColor = C.teal;
-      ctx.beginPath(); ctx.arc(ex, ey, 3.5, 0, Math.PI*2); ctx.fill();
-      ctx.restore();
-    }
+  function pointAt(cx, cy, radius, angle) {
+    return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
   }
-
-  /* ── building block at road endpoint ── */
-  function drawBuilding(x, y, p, label) {
-    if (p <= 0) return;
-    const bw = 34, bh = 20;
+  function drawArc(cx, cy, radius, startAngle, endAngle, alpha, width) {
     ctx.save();
-    ctx.globalAlpha = eOut(p);
-    ctx.shadowBlur  = 12;
-    ctx.shadowColor = C.indigo;
-
-    /* fill */
-    ctx.fillStyle   = rgba('#1e293b', 0.92);
-    ctx.strokeStyle = rgba(C.indigo, 0.9);
-    ctx.lineWidth   = 1.5;
+    ctx.strokeStyle = rgba(COLORS.cyan, alpha);
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.roundRect(x - bw/2, y - bh/2, bw, bh, 4);
-    ctx.fill(); ctx.stroke();
-
-    /* top accent line */
-    ctx.strokeStyle = rgba(C.cyan, 0.85);
-    ctx.lineWidth   = 2;
-    ctx.beginPath();
-    ctx.moveTo(x - bw/2 + 3, y - bh/2 + 1);
-    ctx.lineTo(x + bw/2 - 3, y - bh/2 + 1);
+    ctx.arc(cx, cy, radius, startAngle, endAngle);
     ctx.stroke();
-
-    /* label */
-    ctx.shadowBlur  = 0;
-    ctx.fillStyle   = rgba(C.white, Math.min(p * 2, 1));
-    const fs = Math.max(8, Math.round(bw * 0.28));
-    ctx.font        = `600 ${fs}px Poppins,sans-serif`;
-    ctx.textAlign   = 'center';
-    ctx.fillText(label, x, y + bh/2 + 12);
     ctx.restore();
   }
-
-  /* ── routing dot ── */
-  function drawDot(px, py, col, alpha) {
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle   = col;
-    ctx.shadowBlur  = 16; ctx.shadowColor = col;
-    ctx.beginPath(); ctx.arc(px, py, 5.5, 0, Math.PI*2); ctx.fill();
-
-    /* inner white highlight */
-    ctx.shadowBlur  = 0;
-    ctx.fillStyle   = 'rgba(255,255,255,0.7)';
-    ctx.beginPath(); ctx.arc(px-1.5, py-1.5, 1.5, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
-
-  /* ── main draw loop ── */
-  let startTime = null;
-  let done = false;
-  let lastT = 0;
 
   function draw(now) {
-    if (done) return;
-    if (!startTime) startTime = now;
-    const t  = (now - startTime) / 1000;   /* elapsed seconds */
-    const dt = t - lastT; lastT = t;
-
-    const W  = canvas.width, H = canvas.height;
-    const CX = W / 2, CY = H / 2;
-    const BASE = Math.min(W, H) * 0.85;
+    if (complete) return;
+    const elapsed = now - start;
+    const t = clamp(elapsed / duration, 0, 1);
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const cx = W / 2;
+    const cy = H * 0.45;
+    const radius = Math.min(W, H) * 0.31;
+    const rotation = (t * Math.PI * 0.18) - Math.PI * 0.09;
 
     ctx.clearRect(0, 0, W, H);
-
-    /* ── 1. BACKGROUND ── */
-    ctx.fillStyle = C.bg;
+    ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, W, H);
 
-    /* subtle grid */
-    {
-      const ga = prog(t, ...T.bgFade) * 0.055;
-      if (ga > 0) {
-        const gs = 44;
-        ctx.strokeStyle = rgba(C.indigo, ga);
-        ctx.lineWidth   = 0.5;
-        ctx.beginPath();
-        for (let x = 0; x < W; x += gs) { ctx.moveTo(x,0); ctx.lineTo(x,H); }
-        for (let y = 0; y < H; y += gs) { ctx.moveTo(0,y); ctx.lineTo(W,y); }
-        ctx.stroke();
-      }
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.7);
+    glow.addColorStop(0, rgba(COLORS.indigo, 0.18));
+    glow.addColorStop(1, rgba(COLORS.bg, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    /* The bloom opens as three soft compass petals rather than a normal map route. */
+    const bloom = ease(t / 0.68);
+    for (let i = 0; i < 3; i++) {
+      const angle = rotation + i * (Math.PI * 2 / 3);
+      drawArc(cx, cy, radius * (0.62 + i * 0.15),
+        angle - 0.7 * bloom, angle + 0.7 * bloom,
+        0.23 + i * 0.06, 3.5);
     }
 
-    /* ── 2. GPS PIN ── */
-    {
-      const pp = eOut(prog(t, ...T.pinDrop));
-      if (pp > 0) {
-        const startY = CY - 90;
-        const pinY   = lerp(startY, CY - 20, pp);
-        drawPin(CX, pinY, 14 * Math.min(W,H) / 600, pp);
-      }
-    }
+    const orbit = ease((t - 0.13) / 0.57);
+    points.forEach(function (item, index) {
+      const p = pointAt(cx, cy, radius * item.radius / 0.31,
+        item.angle + rotation + orbit * 0.12);
+      const appear = ease((t - index * 0.08) / 0.38);
+      ctx.save();
+      ctx.globalAlpha = appear;
+      ctx.fillStyle = index === 1 ? COLORS.mint : COLORS.cyan;
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
-    /* ── 3. PULSE RINGS ── */
-    if (t > T.rings[0]) {
-      const ringElapsed = t - 1.6;
-      for (let i = 0; i < 4; i++) {
-        const rt = ((ringElapsed - i * 0.55) % 2.5) / 2.5;
-        if (rt < 0) continue;
-        const r  = rt * Math.min(W, H) * 0.18;
-        const ra = (1 - rt) * 0.45;
-        ctx.strokeStyle = rgba(C.indigo, ra);
-        ctx.lineWidth   = 1.8;
-        ctx.beginPath(); ctx.arc(CX, CY - 20, r, 0, Math.PI*2); ctx.stroke();
-      }
-    }
-
-    /* ── 4. ROADS + BUILDINGS ── */
-    const roads = buildRoads(CX, CY - 20, BASE / 2);
-    roads.forEach((r, i) => {
-      const roadStart = T.roads[0] + i * 0.35;
-      const roadEnd   = roadStart + 0.7;
-      const rp = prog(t, roadStart, roadEnd);
-      if (rp <= 0) return;
-
-      drawRoad(r.x1, r.y1, r.x2, r.y2, eOut(rp), Math.min(rp * 3, 1));
-
-      const bp = prog(t, roadEnd, roadEnd + 0.55);
-      drawBuilding(r.x2, r.y2, bp, r.label);
+      ctx.save();
+      ctx.globalAlpha = appear * 0.72;
+      ctx.fillStyle = COLORS.muted;
+      ctx.font = '500 11px Poppins, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(item.label, p.x, p.y + 24);
+      ctx.restore();
     });
 
-    /* ── 5. ROUTING DOTS ── */
-    {
-      const dotAlpha = prog(t, ...T.dots);
-      if (dotAlpha > 0) {
-        dotState.forEach((d, i) => {
-          const r = roads[d.ri];
-          if (!r) return;
+    /* Center compass bloom settles into the app's location mark. */
+    const centerIn = ease((t - 0.18) / 0.52);
+    const centerPulse = 1 + Math.sin(t * Math.PI * 7) * 0.04;
+    ctx.save();
+    ctx.globalAlpha = centerIn;
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation * 0.5);
+    ctx.scale(centerPulse, centerPulse);
+    ctx.fillStyle = COLORS.white;
+    ctx.shadowBlur = 24;
+    ctx.shadowColor = COLORS.cyan;
+    ctx.beginPath();
+    ctx.moveTo(0, -21);
+    ctx.lineTo(8, 7);
+    ctx.lineTo(0, 2);
+    ctx.lineTo(-8, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = COLORS.indigo;
+    ctx.beginPath();
+    ctx.arc(0, 0, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
-          /* advance position */
-          d.t += d.speed * dt;
-          const norm = d.t % 2.0;           /* ping-pong 0→1→0 */
-          const fwd  = norm < 1.0;
-          const tp   = eIO(fwd ? norm : 2 - norm);
+    const titleIn = ease((t - 0.52) / 0.35);
+    const titleOut = 1 - ease((t - 0.84) / 0.16);
+    ctx.save();
+    ctx.globalAlpha = titleIn * titleOut;
+    ctx.fillStyle = COLORS.white;
+    ctx.font = '700 ' + Math.max(18, Math.min(25, W * 0.06)) + 'px Poppins, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('VGU CAMPUS', cx, cy + radius * 0.82);
+    ctx.fillStyle = COLORS.muted;
+    ctx.font = '500 10px Poppins, sans-serif';
+    ctx.letterSpacing = '2px';
+    ctx.fillText('FIND YOUR NEXT PLACE', cx, cy + radius * 0.82 + 22);
+    ctx.restore();
 
-          const px = lerp(r.x1, r.x2, tp);
-          const py = lerp(r.y1, r.y2, tp);
-
-          /* trail */
-          for (let j = 1; j <= 5; j++) {
-            const trailTP = clamp(tp - (fwd ? j : -j) * 0.07, 0, 1);
-            const tx = lerp(r.x1, r.x2, trailTP);
-            const ty = lerp(r.y1, r.y2, trailTP);
-            ctx.save();
-            ctx.globalAlpha = dotAlpha * (0.4 - j * 0.07);
-            ctx.fillStyle   = d.col;
-            ctx.beginPath(); ctx.arc(tx, ty, 4 - j*0.4, 0, Math.PI*2); ctx.fill();
-            ctx.restore();
-          }
-
-          drawDot(px, py, d.col, dotAlpha);
-        });
-      }
-    }
-
-    /* ── 6. RADAR SWEEP ── */
-    {
-      const rp = prog(t, ...T.radar);
-      if (rp > 0) {
-        const sweepAngle = -Math.PI/2 + rp * Math.PI * 2;
-        const maxR       = Math.sqrt(W*W + H*H) / 2;
-
-        ctx.save();
-        ctx.translate(CX, CY - 20);
-
-        /* sweep sector */
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.arc(0, 0, maxR, sweepAngle - 0.45, sweepAngle);
-        ctx.closePath();
-        const sGrd = ctx.createRadialGradient(0,0,0, 0,0,maxR);
-        sGrd.addColorStop(0,   rgba(C.cyan, 0.18));
-        sGrd.addColorStop(0.7, rgba(C.cyan, 0.06));
-        sGrd.addColorStop(1,   rgba(C.cyan, 0));
-        ctx.fillStyle = sGrd;
-        ctx.fill();
-
-        /* sweep arm */
-        ctx.strokeStyle = rgba(C.teal, 0.85);
-        ctx.lineWidth   = 1.8;
-        ctx.shadowBlur  = 10; ctx.shadowColor = C.cyan;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(Math.cos(sweepAngle)*maxR, Math.sin(sweepAngle)*maxR);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        /* radar centre dot */
-        ctx.fillStyle  = C.teal;
-        ctx.shadowBlur = 8; ctx.shadowColor = C.cyan;
-        ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-
-        ctx.restore();
-      }
-    }
-
-    /* ── 7. FADE OUT ── */
-    {
-      const fo = prog(t, ...T.fadeOut);
-      if (fo > 0) {
-        overlay.style.opacity = String(1 - fo);
-        if (fo >= 1) {
-          overlay.style.display = 'none';
-          done = true;
-          document.dispatchEvent(new CustomEvent('introComplete'));
-          return;
-        }
-      }
-    }
-
-    requestAnimationFrame(draw);
+    if (t < 1) requestAnimationFrame(draw);
+    else finish();
   }
 
   requestAnimationFrame(draw);

@@ -11,13 +11,13 @@
 <body>
 
 <!-- ═══════════════════════════════════════════════════════
-     INTRO OVERLAY — plays for ~9 s, then fades to home
+     INTRO OVERLAY — first visit only, then fades to home
 ═══════════════════════════════════════════════════════ -->
 <div id="introOverlay" style="
   position:fixed;inset:0;z-index:999999;
   background:#060d1a;
   display:flex;align-items:center;justify-content:center;
-  transition:opacity 1s ease;
+   transition:opacity .35s ease;
 ">
   <canvas id="introCanvas" style="position:absolute;inset:0;width:100%;height:100%;display:block;"></canvas>
 </div>
@@ -677,8 +677,9 @@ function initHomePage() {
 
 document.addEventListener('introComplete', initHomePage);
 
-/* Fallback: if intro.js fails or browser blocks canvas, reveal after 10 s */
-setTimeout(initHomePage, 10000);
+/* A return to Home skips the intro; the first visit is handled by intro.js. */
+if (window.__campusIntroComplete) initHomePage();
+else setTimeout(initHomePage, 3500);
 </script>
 </body>
 </html>

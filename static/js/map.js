@@ -26,7 +26,7 @@ var streetLayer     = null;
 var routeRequestId  = 0;
 var lastRouteOrigin = null;
 var routeBusy       = false;
-var activeGateMarker = null;
+var gateMarkers = [];
 var campusLocations = [];
 var nearestBuildingPopup = null;
 var routeStartPosition = null;
@@ -124,18 +124,22 @@ function isInsideCampus(lat, lng) {
   return inside;
 }
 
-function campusPath(startName, endName) {
+function campusPath(startName, endName, blockedName) {
   var graph = {};
-  Object.keys(CAMPUS_NODES).forEach(function (name) { graph[name] = []; });
+  Object.keys(CAMPUS_NODES).forEach(function (name) {
+    if (name !== blockedName) graph[name] = [];
+  });
   CAMPUS_EDGES.forEach(function (edge) {
     var a = edge[0], b = edge[1];
+    if (a === blockedName || b === blockedName) return;
     var cost = haversine(CAMPUS_NODES[a][0], CAMPUS_NODES[a][1],
                          CAMPUS_NODES[b][0], CAMPUS_NODES[b][1]);
     graph[a].push({ node: b, cost: cost });
     graph[b].push({ node: a, cost: cost });
   });
 
-  var distances = {}, previous = {}, open = Object.keys(CAMPUS_NODES);
+  if (!graph[startName] || !graph[endName]) return [];
+  var distances = {}, previous = {}, open = Object.keys(graph);
   open.forEach(function (name) { distances[name] = Infinity; });
   distances[startName] = 0;
   while (open.length) {
@@ -158,6 +162,15 @@ function campusPath(startName, endName) {
     cursor = previous[cursor];
   }
   return names[0] === startName ? names.map(function (name) { return CAMPUS_NODES[name]; }) : [];
+}
+
+function pathDistance(points) {
+  var total = 0;
+  for (var i = 0; i < points.length - 1; i++) {
+    total += haversine(points[i][0], points[i][1],
+                       points[i + 1][0], points[i + 1][1]);
+  }
+  return total;
 }
 
 function getRoadDestination() {
@@ -186,13 +199,39 @@ function campusRoutePlan(uLat, uLng, dLat, dLng) {
   var start = nearestCampusNode(uLat, uLng);
   var end = nearestCampusNode(dLat, dLng);
   var startNode = outside ? gate.name.toLowerCase().replace(" ", "") : start.name;
-  var path = campusPath(startNode, end.name);
+  var routeOrigin = outside ? gate.point : [uLat, uLng];
+  var cricket = CAMPUS_NODES.cricketGround;
+  var directDistance = haversine(routeOrigin[0], routeOrigin[1], dLat, dLng);
+  var cricketDistance = haversine(routeOrigin[0], routeOrigin[1], cricket[0], cricket[1]);
+  var shouldUseCricket = end.name !== "cricketGround" &&
+    startNode !== "cricketGround" && directDistance > cricketDistance;
+  var directPath = campusPath(startNode, end.name, "cricketGround");
+  var path = directPath;
+
+  /*
+   * Short destinations stay direct. For longer campus trips, Cricket Ground
+   * becomes one explicit waypoint. The direct path excludes it, so it cannot
+   * appear merely because the graph happened to choose that branch.
+   */
+  if (!directPath.length) {
+    directPath = campusPath(startNode, end.name);
+    path = directPath;
+  }
+  if (shouldUseCricket) {
+    var toCricket = campusPath(startNode, "cricketGround");
+    var fromCricket = campusPath("cricketGround", end.name);
+    if (toCricket.length && fromCricket.length) {
+      path = toCricket.concat(fromCricket.slice(1));
+    }
+  }
   return {
     outside: outside,
     gate: gate,
     start: start,
     end: end,
     path: path,
+    directDistance: directDistance,
+    cricketDistance: cricketDistance,
     usesCricketGround: path.some(function (point) {
       return point[0] === CAMPUS_NODES.cricketGround[0] &&
              point[1] === CAMPUS_NODES.cricketGround[1];
@@ -347,23 +386,25 @@ function updateNearestBuilding(lat, lng) {
 }
 
 function updateActiveGateMarker(plan) {
-  if (activeGateMarker) {
-    map.removeLayer(activeGateMarker);
-    activeGateMarker = null;
-  }
+  gateMarkers.forEach(function (marker) { map.removeLayer(marker); });
+  gateMarkers = [];
   if (!plan.outside) return;
-  activeGateMarker = L.circleMarker(plan.gate.point, {
-    radius: 8,
-    color: "#fff",
-    weight: 2,
-    fillColor: "#f97316",
-    fillOpacity: 1
-  }).bindTooltip(plan.gate.name + " · campus entry", {
-    permanent: true,
-    direction: "top",
-    offset: [0, -8],
-    className: "campus-gate-label"
-  }).addTo(map);
+  Object.keys(CAMPUS_GATES).forEach(function (name) {
+    var selected = name === plan.gate.name;
+    var marker = L.circleMarker(CAMPUS_GATES[name], {
+      radius: selected ? 9 : 6,
+      color: "#fff",
+      weight: selected ? 2 : 1.5,
+      fillColor: selected ? "#f97316" : "#64748b",
+      fillOpacity: selected ? 1 : 0.85
+    }).bindTooltip(name + (selected ? " · nearest entry" : " · campus gate"), {
+      permanent: true,
+      direction: "top",
+      offset: [0, -8],
+      className: selected ? "campus-gate-label selected" : "campus-gate-label"
+    }).addTo(map);
+    gateMarkers.push(marker);
+  });
 }
 
 /* ── Icons ──────────────────────────────────────────────── */
