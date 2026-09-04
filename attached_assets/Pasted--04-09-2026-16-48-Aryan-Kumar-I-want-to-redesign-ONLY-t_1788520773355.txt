@@ -1,0 +1,183 @@
+[04-09-2026 16:48] Aryan Kumar: I want to redesign ONLY the opening intro animation of my Campus Navigator web application.
+
+IMPORTANT:
+The intro must appear ONLY when the web application is opened/refreshed.
+
+Duration must be approximately 2–3 seconds maximum.
+
+After the animation finishes, the normal homepage must appear immediately.
+
+Do NOT show the intro on every navigation between pages.
+
+Use sessionStorage/localStorage if necessary so the intro only appears once per browser session.
+
+==================================================
+CONCEPT: "THE CAMPUS COMES ALIVE"
+==================================================
+
+Create a completely original intro specifically for a CAMPUS NAVIGATION application.
+
+Do NOT use:
+- spinning globe
+- generic loading spinner
+- generic progress bar
+- generic logo fade
+- generic particle explosion
+- stock animation
+- long cinematic intro
+
+The animation should visually communicate:
+
+"From an unknown position → the campus network is detected → a destination route is formed → Campus Navigator becomes ready."
+
+==================================================
+ANIMATION SEQUENCE
+==================================================
+
+0.0 – 0.5 seconds
+
+Screen starts almost completely dark navy.
+
+A tiny glowing location dot appears in the center.
+
+It represents the user's current position.
+
+The dot produces a small GPS pulse.
+
+Text is NOT shown yet.
+
+==================================================
+
+0.5 – 1.2 seconds
+
+The single GPS point rapidly expands into a miniature digital campus network.
+
+Several small glowing nodes appear around it.
+
+Thin lines connect the nodes.
+
+The network resembles a simplified campus map rather than a world map.
+
+A route begins drawing from the center node toward one destination node.
+
+The route should animate as if the system is calculating a path.
+
+Use smooth SVG/CSS animation or Canvas.
+
+==================================================
+1.2 – 1.8 seconds
+==================================================
+
+The destination node becomes highlighted.
+
+A small navigation arrow travels along the newly created route.
+
+At the same time, the surrounding campus network subtly expands.
+
+This should communicate:
+
+"Location detected → route calculated."
+
+==================================================
+1.8 – 2.4 seconds
+==================================================
+
+The campus network smoothly transforms into the application's branding.
+
+Show:
+
+● CAMPUS NAVIGATOR
+
+with a small location/navigation icon.
+
+Do NOT mention:
+VGU
+Vivekananda Global University
+Jaipur
+or any college/university name.
+
+The title should be universal and reusable for any campus.
+
+==================================================
+2.4 – 3.0 seconds
+==================================================
+
+The intro smoothly dissolves/wipes upward into the actual homepage.
+
+The homepage should already be loaded behind the intro so there is no visible loading delay.
+
+==================================================
+VISUAL STYLE
+==================================================
+
+Use the existing dark navy/blue design language.
+
+Use:
+- electric blue
+- cyan
+- subtle violet
+- white text
+- soft glow
+
+Use a clean modern font.
+
+The animation should feel like:
+"GPS + digital campus + intelligent routing."
+
+It should look technically impressive but professional.
+
+==================================================
+TECHNICAL REQUIREMENTS
+==================================================
+
+Prefer lightweight implementation using:
+
+HTML
+CSS
+JavaScript
+SVG
+
+Avoid heavy animation libraries unless absolutely necessary.
+
+Do not significantly increase page loading time.
+
+Use requestAnimationFrame where appropriate.
+
+Use CSS transforms and opacity for smooth GPU-accelerated animation.
+
+The animation must work on:
+- desktop
+- laptop
+- Android
+- mobile browsers
+
+Respect reduced-motion accessibility where possible.
+
+If the user has prefers-reduced-motion enabled, use a much simpler fade transition.
+
+==================================================
+MOST IMPORTANT
+==================================================
+[04-09-2026 16:48] Aryan Kumar: The intro should communicate the identity of the product in approximately 3 seconds:
+
+GPS LOCATION
+       ↓
+CAMPUS NETWORK
+       ↓
+ROUTE CALCULATION
+       ↓
+CAMPUS NAVIGATOR
+       ↓
+REAL APPLICATION
+
+It should feel like the application is "building the route in front of the user."
+
+Do not make it look like a movie intro.
+
+Do not make it longer than 3 seconds.
+
+Do not block the homepage after the animation.
+
+Do not change any existing backend functionality.
+
+After implementing it, test the opening animation and ensure the homepage loads normally after it completes.

@@ -1,7 +1,8 @@
 /* ================================================================
-   Campus Navigator — "Compass Bloom" first-visit intro
-   A short, mobile-friendly constellation animation that reveals the
-   campus compass in 2.6 seconds. It runs once per browser tab session.
+   Campus Navigator — "The Campus Comes Alive"
+   A lightweight first-visit intro:
+   GPS point → campus network → calculated route → CAMPUS NAVIGATOR.
+   It runs once per browser tab session and completes in under 3 seconds.
 ================================================================ */
 (function () {
   'use strict';
@@ -32,7 +33,7 @@
     alreadySeen = sessionStorage.getItem(SESSION_KEY) === '1';
     if (!alreadySeen) sessionStorage.setItem(SESSION_KEY, '1');
   } catch (error) {
-    /* Private browsing can block storage; play once for that page load. */
+    /* Some private browsing modes block storage; play for this load only. */
   }
 
   if (alreadySeen || reducedMotion) {
@@ -41,20 +42,35 @@
   }
 
   const COLORS = {
-    bg: '#07111f',
-    indigo: '#818cf8',
+    bg: '#06101f',
+    blue: '#4f46e5',
+    electric: '#60a5fa',
     cyan: '#67e8f9',
     mint: '#6ee7b7',
     white: '#f8fafc',
-    muted: '#94a3b8'
+    muted: '#94a3b8',
+    line: '#334a78'
   };
-  const duration = 2600;
+  const duration = 2800;
   const start = performance.now();
-  const points = [
-    { angle: -Math.PI * 0.78, radius: 0.27, label: 'Learn' },
-    { angle: -Math.PI * 0.08, radius: 0.31, label: 'Explore' },
-    { angle: Math.PI * 0.55, radius: 0.28, label: 'Arrive' }
+
+  /* A compact campus-shaped network, not a globe or generic particle field. */
+  const nodes = [
+    { x: 0, y: 0, center: true },
+    { x: -0.31, y: -0.16 },
+    { x: -0.12, y: -0.37 },
+    { x: 0.22, y: -0.29 },
+    { x: 0.39, y: -0.03, destination: true },
+    { x: 0.19, y: 0.27 },
+    { x: -0.16, y: 0.34 },
+    { x: -0.40, y: 0.12 }
   ];
+  const edges = [
+    [0, 1], [0, 2], [0, 3], [0, 5], [0, 7],
+    [1, 2], [1, 7], [2, 3], [3, 4], [3, 5],
+    [4, 5], [5, 6], [6, 7], [7, 0]
+  ];
+  const route = [0, 3, 4];
 
   function resize() {
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -79,110 +95,171 @@
     return 'rgba(' + ((value >> 16) & 255) + ',' +
       ((value >> 8) & 255) + ',' + (value & 255) + ',' + alpha + ')';
   }
-  function pointAt(cx, cy, radius, angle) {
-    return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
+  function nodePoint(node, cx, cy, radius) {
+    return { x: cx + node.x * radius, y: cy + node.y * radius };
   }
-  function drawArc(cx, cy, radius, startAngle, endAngle, alpha, width) {
+  function drawLine(a, b, progress, color, alpha, width) {
+    const x = a.x + (b.x - a.x) * progress;
+    const y = a.y + (b.y - a.y) * progress;
     ctx.save();
-    ctx.strokeStyle = rgba(COLORS.cyan, alpha);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
     ctx.lineWidth = width;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(cx, cy, radius, startAngle, endAngle);
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(x, y);
     ctx.stroke();
+    ctx.restore();
+  }
+  function drawArrow(from, to, progress, alpha) {
+    const x = from.x + (to.x - from.x) * progress;
+    const y = from.y + (to.y - from.y) * progress;
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = COLORS.white;
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = COLORS.cyan;
+    ctx.beginPath();
+    ctx.moveTo(10, 0);
+    ctx.lineTo(-7, -6);
+    ctx.lineTo(-3, 0);
+    ctx.lineTo(-7, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  function drawLocationPin(x, y, alpha, scale) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = COLORS.cyan;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = COLORS.cyan;
+    ctx.beginPath();
+    ctx.arc(0, -5, 10, Math.PI, 0);
+    ctx.bezierCurveTo(10, 2, 3, 10, 0, 14);
+    ctx.bezierCurveTo(-3, 10, -10, 2, -10, -5);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = COLORS.bg;
+    ctx.beginPath();
+    ctx.arc(0, -5, 3.3, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
   function draw(now) {
     if (complete) return;
-    const elapsed = now - start;
-    const t = clamp(elapsed / duration, 0, 1);
+    const t = clamp((now - start) / duration, 0, 1);
     const W = window.innerWidth;
     const H = window.innerHeight;
     const cx = W / 2;
-    const cy = H * 0.45;
-    const radius = Math.min(W, H) * 0.31;
-    const rotation = (t * Math.PI * 0.18) - Math.PI * 0.09;
+    const cy = H * 0.43;
+    const radius = Math.min(W, H) * 0.74;
+    const dotIn = ease(t / 0.17);
+    const networkIn = ease((t - 0.16) / 0.35);
+    const routeIn = ease((t - 0.43) / 0.38);
+    const routeOut = 1 - ease((t - 0.78) / 0.14);
+    const brandIn = ease((t - 0.62) / 0.24);
+    const fade = ease((t - 0.84) / 0.16);
 
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, W, H);
 
-    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.7);
-    glow.addColorStop(0, rgba(COLORS.indigo, 0.18));
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 0.8);
+    glow.addColorStop(0, rgba(COLORS.blue, 0.2));
     glow.addColorStop(1, rgba(COLORS.bg, 0));
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, W, H);
 
-    /* The bloom opens as three soft compass petals rather than a normal map route. */
-    const bloom = ease(t / 0.68);
-    for (let i = 0; i < 3; i++) {
-      const angle = rotation + i * (Math.PI * 2 / 3);
-      drawArc(cx, cy, radius * (0.62 + i * 0.15),
-        angle - 0.7 * bloom, angle + 0.7 * bloom,
-        0.23 + i * 0.06, 3.5);
-    }
-
-    const orbit = ease((t - 0.13) / 0.57);
-    points.forEach(function (item, index) {
-      const p = pointAt(cx, cy, radius * item.radius / 0.31,
-        item.angle + rotation + orbit * 0.12);
-      const appear = ease((t - index * 0.08) / 0.38);
-      ctx.save();
-      ctx.globalAlpha = appear;
-      ctx.fillStyle = index === 1 ? COLORS.mint : COLORS.cyan;
-      ctx.shadowBlur = 18;
-      ctx.shadowColor = ctx.fillStyle;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      ctx.save();
-      ctx.globalAlpha = appear * 0.72;
-      ctx.fillStyle = COLORS.muted;
-      ctx.font = '500 11px Poppins, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(item.label, p.x, p.y + 24);
-      ctx.restore();
+    const points = nodes.map(function (node) {
+      return nodePoint(node, cx, cy, radius);
     });
 
-    /* Center compass bloom settles into the app's location mark. */
-    const centerIn = ease((t - 0.18) / 0.52);
-    const centerPulse = 1 + Math.sin(t * Math.PI * 7) * 0.04;
-    ctx.save();
-    ctx.globalAlpha = centerIn;
-    ctx.translate(cx, cy);
-    ctx.rotate(rotation * 0.5);
-    ctx.scale(centerPulse, centerPulse);
-    ctx.fillStyle = COLORS.white;
-    ctx.shadowBlur = 24;
-    ctx.shadowColor = COLORS.cyan;
-    ctx.beginPath();
-    ctx.moveTo(0, -21);
-    ctx.lineTo(8, 7);
-    ctx.lineTo(0, 2);
-    ctx.lineTo(-8, 7);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = COLORS.indigo;
-    ctx.beginPath();
-    ctx.arc(0, 0, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    /* 0.0–0.5s: current position appears as one GPS point and pulse. */
+    if (dotIn > 0) {
+      const pulse = (t * 3.2) % 1;
+      ctx.save();
+      ctx.globalAlpha = dotIn * (1 - pulse) * 0.42;
+      ctx.strokeStyle = COLORS.cyan;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 13 + pulse * 30, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      drawLocationPin(cx, cy, dotIn, 0.72 + dotIn * 0.28);
+    }
 
-    const titleIn = ease((t - 0.52) / 0.35);
-    const titleOut = 1 - ease((t - 0.84) / 0.16);
-    ctx.save();
-    ctx.globalAlpha = titleIn * titleOut;
-    ctx.fillStyle = COLORS.white;
-    ctx.font = '700 ' + Math.max(18, Math.min(25, W * 0.06)) + 'px Poppins, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = COLORS.muted;
-    ctx.font = '500 10px Poppins, sans-serif';
-    ctx.letterSpacing = '2px';
-    ctx.fillText('FIND YOUR NEXT PLACE', cx, cy + radius * 0.82 + 22);
-    ctx.restore();
+    /* 0.5–1.2s: surrounding nodes and thin campus-network roads appear. */
+    if (networkIn > 0) {
+      edges.forEach(function (edge, index) {
+        const edgeIn = ease((t - 0.18 - index * 0.025) / 0.26);
+        drawLine(points[edge[0]], points[edge[1]], edgeIn,
+          COLORS.line, edgeIn * 0.85, 1.3);
+      });
+      points.forEach(function (point, index) {
+        if (index === 0) return;
+        const nodeIn = ease((t - 0.22 - index * 0.035) / 0.24);
+        ctx.save();
+        ctx.globalAlpha = nodeIn * 0.95;
+        ctx.fillStyle = index === 4 ? COLORS.mint : COLORS.electric;
+        ctx.shadowBlur = index === 4 ? 18 : 10;
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, index === 4 ? 5.5 : 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    /* 1.2–1.8s: route calculates from the current point to a destination. */
+    if (routeIn > 0) {
+      drawLine(points[0], points[3], routeIn, COLORS.cyan, routeOut, 3.8);
+      drawLine(points[3], points[4], clamp((routeIn - 0.42) / 0.58, 0, 1),
+        COLORS.cyan, routeOut, 3.8);
+      const arrowProgress = (t * 2.1) % 1;
+      if (routeIn > 0.35) {
+        drawArrow(points[0], points[3], arrowProgress, routeOut);
+        if (arrowProgress > 0.58) {
+          drawArrow(points[3], points[4], (arrowProgress - 0.58) / 0.42, routeOut);
+        }
+      }
+      drawLocationPin(points[4].x, points[4].y, routeIn * routeOut, 0.55);
+    }
+
+    /* 1.8–2.4s: the living network resolves into a universal product name. */
+    if (brandIn > 0) {
+      const scale = 0.88 + brandIn * 0.12;
+      ctx.save();
+      ctx.globalAlpha = brandIn;
+      ctx.translate(cx, cy + radius * 0.56);
+      ctx.scale(scale, scale);
+      ctx.fillStyle = COLORS.white;
+      ctx.font = '700 ' + Math.max(19, Math.min(28, W * 0.065)) +
+        'px Poppins, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('CAMPUS NAVIGATOR', 0, 0);
+      ctx.fillStyle = COLORS.muted;
+      ctx.font = '500 10px Poppins, sans-serif';
+      ctx.fillText('YOUR ROUTE IS READY', 0, 22);
+      ctx.restore();
+      drawLocationPin(cx, cy + radius * 0.56 - 25, brandIn, 0.43);
+    }
+
+    /* 2.4–2.8s: reveal the already-loaded homepage from bottom to top. */
+    if (fade > 0) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = COLORS.bg;
+      ctx.fillRect(0, 0, W, H * (1 - fade));
+      ctx.restore();
+    }
 
     if (t < 1) requestAnimationFrame(draw);
     else finish();
