@@ -178,7 +178,6 @@
     ctx.fillStyle = COLORS.white;
     ctx.font = '700 ' + Math.max(18, Math.min(25, W * 0.06)) + 'px Poppins, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('VGU CAMPUS', cx, cy + radius * 0.82);
     ctx.fillStyle = COLORS.muted;
     ctx.font = '500 10px Poppins, sans-serif';
     ctx.letterSpacing = '2px';
