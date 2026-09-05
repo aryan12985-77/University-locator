@@ -59,9 +59,9 @@
       <button class="map-style-btn" id="mapStyleBtn" data-mode="satellite">◈ Street</button>
     </div>
 
-    <!-- Compass is sensor-driven; it remains available even when GPS is unavailable. -->
+    <!-- Compass uses device facing when available and GPS movement as fallback. -->
     <div class="map-compass-control">
-      <button class="compass-btn" id="compassBtn" title="Orient map to your direction">N</button>
+      <button class="compass-btn" id="compassBtn" title="Enable device-facing direction" aria-label="Enable device-facing direction">▲</button>
       <span id="headingReadout">—</span>
     </div>
 

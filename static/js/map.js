@@ -20,6 +20,11 @@ var destinationData = null;
 var locating        = false;
 // Direction is deliberately based on movement/course, not phone tilt or hand angle.
 var movementHeading = null;
+var deviceHeading = null;
+var displayedHeading = null;
+var lastDeviceHeadingAt = 0;
+var deviceOrientationAttached = false;
+var absoluteOrientationSeen = false;
 var lastPosition    = null;
 var satelliteLayer  = null;
 var streetLayer     = null;
@@ -463,6 +468,7 @@ window.onload = function () {
   map.on("locationerror", onLocationError);
 
   setTimeout(() => map.invalidateSize(), 300);
+  initDeviceOrientation();
   initMapControls();
   fetch("/api/locations")
     .then(function (response) { return response.json(); })
@@ -493,15 +499,94 @@ function initMapControls() {
   }
   var compass = document.getElementById("compassBtn");
   if (compass) compass.addEventListener("click", function () {
-    if (movementHeading !== null) {
-      compass.style.transform = "rotate(" + (-movementHeading) + "deg)";
-    } else {
-      showToast("Walk a few metres to detect your travel direction", 2800);
+    var requested = requestDeviceOrientation();
+    if (deviceHeading !== null) updateHeading(deviceHeading, "device");
+    else if (movementHeading !== null) updateHeading(movementHeading, "gps");
+    else if (!requested) showToast("This device has no compass sensor", 2800);
+    else if (typeof window.DeviceOrientationEvent.requestPermission !== "function") {
+      showToast("Rotate the device to calibrate its facing direction", 2600);
     }
   });
 }
 
-// Calculate travel bearing between two GPS fixes. This ignores device angle.
+function attachDeviceOrientation() {
+  if (deviceOrientationAttached) return;
+  if (!window.DeviceOrientationEvent) return;
+  window.addEventListener("deviceorientationabsolute", handleDeviceOrientation, true);
+  window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+  deviceOrientationAttached = true;
+}
+
+function initDeviceOrientation() {
+  /*
+   * iOS requires requestPermission() from a user gesture. Other browsers
+   * can listen immediately, while the compass button can still retry access.
+   */
+  if (!window.DeviceOrientationEvent) return;
+  if (typeof window.DeviceOrientationEvent.requestPermission !== "function") {
+    attachDeviceOrientation();
+  }
+}
+
+function requestDeviceOrientation() {
+  if (!window.DeviceOrientationEvent) return false;
+  if (typeof window.DeviceOrientationEvent.requestPermission === "function") {
+    window.DeviceOrientationEvent.requestPermission()
+      .then(function (permission) {
+        if (permission === "granted") {
+          attachDeviceOrientation();
+          showToast("Device compass enabled", 1800);
+        } else {
+          showToast("Compass access was not allowed", 2600);
+        }
+      })
+      .catch(function () {
+        showToast("Compass access is unavailable in this browser", 2600);
+      });
+  } else {
+    attachDeviceOrientation();
+  }
+  return true;
+}
+
+function normalizeHeading(value) {
+  return (value % 360 + 360) % 360;
+}
+
+function deviceHeadingFromEvent(event) {
+  if (typeof event.webkitCompassHeading === "number" &&
+      isFinite(event.webkitCompassHeading)) {
+    return normalizeHeading(event.webkitCompassHeading);
+  }
+  if (typeof event.alpha !== "number" || !isFinite(event.alpha)) return null;
+
+  /*
+   * alpha is clockwise from north on absolute orientation events. Adjust
+   * for screen rotation so landscape phones do not point 90° off.
+   */
+  var heading = 360 - event.alpha;
+  var screenAngle = window.screen && window.screen.orientation
+    ? window.screen.orientation.angle
+    : (typeof window.orientation === "number" ? window.orientation : 0);
+  return normalizeHeading(heading + screenAngle);
+}
+
+function handleDeviceOrientation(event) {
+  if (event.absolute === true) absoluteOrientationSeen = true;
+  if (absoluteOrientationSeen &&
+      event.type !== "deviceorientationabsolute" &&
+      typeof event.webkitCompassHeading !== "number") return;
+  if (typeof event.webkitCompassHeading !== "number" &&
+      event.absolute !== true) return;
+
+  var heading = deviceHeadingFromEvent(event);
+  if (heading === null) return;
+  deviceHeading = heading;
+  lastDeviceHeadingAt = Date.now();
+  updateHeading(heading, "device");
+}
+
+// Calculate travel bearing between two GPS fixes as a fallback.
 function bearingBetween(a, b) {
   var lat1 = a.lat * Math.PI / 180;
   var lat2 = b.lat * Math.PI / 180;
@@ -514,22 +599,34 @@ function bearingBetween(a, b) {
 
 // Smooth compass wrap-around (359° → 0°) so the arrow does not jump.
 function smoothHeading(next) {
-  if (movementHeading === null) return next;
-  var delta = ((next - movementHeading + 540) % 360) - 180;
-  return (movementHeading + delta * 0.28 + 360) % 360;
+  if (displayedHeading === null) return next;
+  var delta = ((next - displayedHeading + 540) % 360) - 180;
+  return (displayedHeading + delta * 0.28 + 360) % 360;
 }
 
-function updateMovementHeading(heading) {
-  movementHeading = smoothHeading(heading);
+function updateHeading(heading, source) {
+  displayedHeading = smoothHeading(heading);
   var marker = document.querySelector(".user-location-marker .user-location-wrap");
   if (marker) {
-    marker.style.setProperty("--heading", movementHeading + "deg");
+    marker.style.setProperty("--heading", displayedHeading + "deg");
     marker.classList.add("has-heading");
   }
   var compass = document.getElementById("compassBtn");
-  if (compass) compass.style.transform = "rotate(" + (-movementHeading) + "deg)";
+  if (compass) compass.style.transform = "rotate(" + (-displayedHeading) + "deg)";
   var readout = document.getElementById("headingReadout");
-  if (readout) readout.textContent = Math.round(movementHeading) + "°";
+  if (readout) {
+    readout.textContent = Math.round(displayedHeading) + "°";
+    readout.title = source === "device"
+      ? "Direction the device is facing"
+      : "Direction of recent GPS movement";
+  }
+}
+
+function updateMovementHeading(heading) {
+  movementHeading = heading;
+  var deviceIsFresh = deviceHeading !== null &&
+    Date.now() - lastDeviceHeadingAt < 4000;
+  if (!deviceIsFresh) updateHeading(heading, "gps");
 }
 
 /* ── Load destination from /search ─────────────────────── */
@@ -618,9 +715,8 @@ function onLocationFound(e) {
   var currentFix = { lat: lat, lng: lng, time: Date.now() };
 
   /*
-   * Ignore the browser-provided heading: on many phones it is derived from the compass/orientation
-   * sensor and changes when the phone is tilted or rotated in the hand.
-   * Calculate travel direction only from two GPS positions.
+   * Device orientation controls the facing arrow when available. GPS
+   * movement remains a fallback for laptops and browsers without a compass.
    */
   if (lastPosition) {
     var elapsed = Math.max(0.5, (currentFix.time - lastPosition.time) / 1000);
@@ -645,6 +741,13 @@ function onLocationFound(e) {
       .bindPopup("<b>📍 You are here</b><br><small>" +
                  (e.accuracy ? "±" + Math.round(e.accuracy) + "m accuracy" : "") +
                  "</small>");
+    if (displayedHeading !== null) {
+      var initialHeading = document.querySelector(".user-location-marker .user-location-wrap");
+      if (initialHeading) {
+        initialHeading.style.setProperty("--heading", displayedHeading + "deg");
+        initialHeading.classList.add("has-heading");
+      }
+    }
   }
   var ring = document.querySelector(".user-location-marker .user-accuracy-ring");
   if (ring && e.accuracy) {
