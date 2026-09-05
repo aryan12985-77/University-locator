@@ -1,5 +1,5 @@
 /* ============================================================
-   Campus Navigator — Full Page Map  |  VGU, Jaipur
+   Campus Navigator — Full Page Map
    Maintenance guide:
    - Change CAMPUS_LAT/LNG/ZOOM to adjust the default map view.
    - Change mkUserIcon() to redesign the live person marker.
@@ -7,10 +7,20 @@
    - Map controls are created in initMapControls().
    ============================================================ */
 
+/* Active campus profile is injected by templates/map.html. */
+var CAMPUS_PROFILE = window.campusConfig || {};
+
 /* Campus centre (used as fallback view) */
 var CAMPUS_LAT  = 26.8123;
 var CAMPUS_LNG  = 75.8935;
 var CAMPUS_ZOOM = 18;
+if (CAMPUS_PROFILE.center_lat !== undefined) CAMPUS_LAT = Number(CAMPUS_PROFILE.center_lat);
+if (CAMPUS_PROFILE.center_lng !== undefined) CAMPUS_LNG = Number(CAMPUS_PROFILE.center_lng);
+if (CAMPUS_PROFILE.zoom !== undefined) CAMPUS_ZOOM = Number(CAMPUS_PROFILE.zoom);
+
+function isGenericCampus() {
+  return CAMPUS_PROFILE.routing_mode !== "vgu";
+}
 
 var map             = null;
 var userMarker      = null;
@@ -113,6 +123,10 @@ function nearestCampusNode(lat, lng) {
 }
 
 function isInsideCampus(lat, lng) {
+  if (isGenericCampus()) {
+    var radius = Number(CAMPUS_PROFILE.radius_m || 1200);
+    return haversine(lat, lng, CAMPUS_LAT, CAMPUS_LNG) <= radius;
+  }
   /* Editable safety boundary around the mapped VGU campus footprint. */
   var polygon = [
     [26.81282, 75.88815], [26.81328, 75.89472],
@@ -180,7 +194,7 @@ function pathDistance(points) {
 
 function getRoadDestination() {
   if (!destinationData) return null;
-  var entry = BUILDING_ROAD_ENTRIES[destinationData.building];
+  var entry = isGenericCampus() ? null : BUILDING_ROAD_ENTRIES[destinationData.building];
   return entry || [
     destinationData.entry_lat || destinationData.lat,
     destinationData.entry_lng || destinationData.lng
@@ -188,6 +202,7 @@ function getRoadDestination() {
 }
 
 function campusRoadFallback(uLat, uLng, dLat, dLng) {
+  if (isGenericCampus()) return [[uLat, uLng], [dLat, dLng]];
   var plan = campusRoutePlan(uLat, uLng, dLat, dLng);
   var points = [[uLat, uLng]];
   if (plan.outside) points.push(plan.gate.point);
@@ -199,6 +214,18 @@ function campusRoadFallback(uLat, uLng, dLat, dLng) {
 }
 
 function campusRoutePlan(uLat, uLng, dLat, dLng) {
+  if (isGenericCampus()) {
+    return {
+      outside: false,
+      gate: null,
+      start: null,
+      end: null,
+      path: [],
+      directDistance: haversine(uLat, uLng, dLat, dLng),
+      cricketDistance: 0,
+      usesCricketGround: false
+    };
+  }
   var outside = !isInsideCampus(uLat, uLng);
   var gate = nearestGate(uLat, uLng);
   var start = nearestCampusNode(uLat, uLng);
@@ -393,7 +420,7 @@ function updateNearestBuilding(lat, lng) {
 function updateActiveGateMarker(plan) {
   gateMarkers.forEach(function (marker) { map.removeLayer(marker); });
   gateMarkers = [];
-  if (!plan.outside) return;
+  if (isGenericCampus() || !plan.outside) return;
   Object.keys(CAMPUS_GATES).forEach(function (name) {
     var selected = name === plan.gate.name;
     var marker = L.circleMarker(CAMPUS_GATES[name], {
@@ -409,6 +436,18 @@ function updateActiveGateMarker(plan) {
       className: selected ? "campus-gate-label selected" : "campus-gate-label"
     }).addTo(map);
     gateMarkers.push(marker);
+  });
+}
+
+function escapeHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    }[character];
   });
 }
 
@@ -441,16 +480,20 @@ function mkUserIcon() {
 
 /* ── Map init ───────────────────────────────────────────── */
 window.onload = function () {
+  var radius = Number(CAMPUS_PROFILE.radius_m || 1200);
+  var latSpan = Math.max(0.012, Math.min(0.12, radius / 111000 * 2.4));
+  var lngSpan = Math.max(0.012, Math.min(0.16, radius / (111000 * Math.cos(CAMPUS_LAT * Math.PI / 180)) * 2.4));
+  var minCampusZoom = Math.max(12, Math.min(18, CAMPUS_ZOOM - 2));
   map = L.map("map", {
     center:      [CAMPUS_LAT, CAMPUS_LNG],
     zoom:        CAMPUS_ZOOM,
-    minZoom:     16,
+    minZoom:     minCampusZoom,
     maxZoom:     21,
     zoomControl: true,
-    /* Prevent the map from wandering far from campus */
+    /* Prevent the map from wandering far from the active campus */
     maxBounds: [
-      [CAMPUS_LAT - 0.03, CAMPUS_LNG - 0.04],
-      [CAMPUS_LAT + 0.03, CAMPUS_LNG + 0.04]
+      [CAMPUS_LAT - latSpan, CAMPUS_LNG - lngSpan],
+      [CAMPUS_LAT + latSpan, CAMPUS_LNG + lngSpan]
     ],
     maxBoundsViscosity: 0.8
   });
@@ -658,9 +701,9 @@ function loadDestination() {
       /* Marker */
       var popup =
         "<div style='font-family:Poppins,sans-serif;min-width:160px'>" +
-        "<b>" + loc.name + "</b><br>" +
-        "<span style='color:#64748b;font-size:12px'>" + loc.building + " · " + loc.floor + "</span>" +
-        (loc.instructions ? "<br><small style='color:#94a3b8'>" + loc.instructions + "</small>" : "") +
+        "<b>" + escapeHtml(loc.name) + "</b><br>" +
+        "<span style='color:#64748b;font-size:12px'>" + escapeHtml(loc.building) + " · " + escapeHtml(loc.floor) + "</span>" +
+        (loc.instructions ? "<br><small style='color:#94a3b8'>" + escapeHtml(loc.instructions) + "</small>" : "") +
         "</div>";
 
       destMarker = L.marker([loc.lat, loc.lng], { icon: mkDestIcon() })
@@ -789,7 +832,9 @@ function drawCampusRoute(uLat, uLng, dLat, dLng) {
   var plan = routeWaypoints(uLat, uLng, dLat, dLng);
   var fallback = campusRoadFallback(uLat, uLng, dLat, dLng);
   updateActiveGateMarker(plan);
-  var routeLabel = plan.outside
+  var routeLabel = isGenericCampus()
+    ? "Road route"
+    : plan.outside
     ? "Road route via " + plan.gateName
     : "Shortest campus route";
   if (plan.usesCricketGround) routeLabel += " · via Cricket Ground";

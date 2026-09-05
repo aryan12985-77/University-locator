@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>{{ location.name if location else 'Not Found' }} — Campus Navigator</title>
+<title>{{ location.name if location else 'Not Found' }} — {{ campus.name }}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%234f46e5'/%3E%3Cstop offset='100%25' stop-color='%2306b6d4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M16 1C9.4 1 4 6.4 4 13c0 8.6 12 19 12 19s12-10.4 12-19c0-6.6-5.4-12-12-12z' fill='url(%23g)'/%3E%3Ccircle cx='16' cy='13' r='6' fill='%23fff' opacity='.95'/%3E%3Ccircle cx='16' cy='10.5' r='2' fill='url(%23g)'/%3E%3Cline x1='16' y1='12.5' x2='16' y2='17' stroke='%234f46e5' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='16' y1='14.5' x2='13.5' y2='16.5' stroke='%234f46e5' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='16' y1='14.5' x2='18.5' y2='16.5' stroke='%234f46e5' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='14' y1='17' x2='12.5' y2='19.5' stroke='%234f46e5' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='18' y1='17' x2='19.5' y2='19.5' stroke='%234f46e5' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -164,8 +164,8 @@
   </div>
 
   <!-- FOOTER -->
-  <div class="site-footer">
-    © 2026 Aryan Kumar &nbsp;·&nbsp; Campus Navigator VGU Jaipur
+   <div class="site-footer">
+    © 2026 Aryan Kumar &nbsp;·&nbsp; Campus Navigator {{ campus.name }}
   </div>
 
 </div>
@@ -183,6 +183,12 @@ const LOC = {
   instructions: {{ (location.instructions or '') | tojson }}
 };
 
+function escapeHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, character => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+  }[character]));
+}
+
 /* ============ BUILD STEPS ============ */
 function buildSteps() {
   const list = document.getElementById("stepsList");
@@ -192,7 +198,7 @@ function buildSteps() {
      Placeholder text now; replaced live once GPS resolves (see locateForSteps). */
   steps.push({
     id:   "gpsStep",
-    text: "Head to <strong>" + LOC.building + "</strong> on campus",
+    text: "Head to <strong>" + escapeHtml(LOC.building) + "</strong> on campus",
     sub:  "Turn on location access for a live distance & direction from where you're standing."
   });
 
@@ -205,27 +211,27 @@ function buildSteps() {
   } else if (floorLower === "multiple") {
     steps.push({
       text: "This building has <strong>multiple floors</strong>",
-      sub:  "Check the directory board near the entrance to find the exact floor for " + LOC.name + "."
+      sub:  "Check the directory board near the entrance to find the exact floor for " + escapeHtml(LOC.name) + "."
     });
   } else {
     steps.push({
-      text: "Go to the <strong>" + LOC.floor + "</strong>",
+      text: "Go to the <strong>" + escapeHtml(LOC.floor) + "</strong>",
       sub:  "Take the stairs or elevator to reach the correct floor."
     });
   }
 
   if (LOC.instructions) {
     LOC.instructions.split(/[.\n]+/).filter(s => s.trim().length > 3)
-      .forEach(p => steps.push({ text: p.trim(), sub: null }));
+      .forEach(p => steps.push({ text: escapeHtml(p.trim()), sub: null }));
   } else {
     steps.push({
-      text: "Locate <strong>" + LOC.name + "</strong>",
+      text: "Locate <strong>" + escapeHtml(LOC.name) + "</strong>",
       sub:  "Look for signs or ask nearby staff for assistance."
     });
   }
 
   steps.push({
-    text: "You have arrived at <strong>" + LOC.name + "</strong> 🎉",
+    text: "You have arrived at <strong>" + escapeHtml(LOC.name) + "</strong> 🎉",
     sub:  "Your destination is here."
   });
 
@@ -267,7 +273,7 @@ function locateForSteps() {
       const distLabel = dist < 1000 ? Math.round(dist) + "m" : (dist / 1000).toFixed(1) + "km";
 
       textEl.innerHTML = "You're <strong>" + distLabel + "</strong> away — head <strong>" +
-        dir + "</strong> towards <strong>" + LOC.building + "</strong>";
+        dir + "</strong> towards <strong>" + escapeHtml(LOC.building) + "</strong>";
       subEl.textContent = "~" + mins + " min walk, calculated live from your current location.";
     },
     (err) => {

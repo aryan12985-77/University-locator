@@ -1,1 +1,2 @@
 - [Canvas rotating globe](canvas-rotating-globe.md) — static container + orthographic per-frame projection makes a globe look alive without moving it.
+- [Campus data synchronization](campus-data-synchronization.md) — keep the editable location source complete before restoring or syncing the active campus database.

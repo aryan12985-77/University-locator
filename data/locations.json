@@ -1,5 +1,14 @@
 [
   {
+    "name": "Mess",
+    "building": "Mess Block",
+    "floor": "ground",
+    "lat": 26.811383,
+    "lng": 75.891656,
+    "type": "general",
+    "keywords": "mess canteen food dining"
+  },
+  {
     "name": "Cricket Ground",
     "building": "Sports Area",
     "floor": "Ground",

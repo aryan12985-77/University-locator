@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set up a college — Campus Navigator</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%234f46e5'/%3E%3Ccircle cx='16' cy='13' r='5' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="setup-page">
+  <div class="map-grid-bg"></div>
+  <main class="setup-shell">
+    <header class="setup-header">
+      <a class="logo" href="/">
+        <div class="logo-icon-wrap">
+          <svg class="logo-svg" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <circle cx="18" cy="18" r="17" fill="#4f46e5" opacity=".15"/>
+            <path d="M18 4C12 4 7 9 7 15c0 9 11 17 11 17s11-8 11-17c0-6-5-11-11-11z" fill="#4f46e5"/>
+            <circle cx="18" cy="15" r="4.5" fill="white" opacity=".9"/>
+          </svg>
+        </div>
+        <span>Campus Navigator</span>
+      </a>
+      <a class="btn-secondary setup-back" href="/">← Back to campus</a>
+    </header>
+
+    <section class="setup-hero">
+      <span class="setup-kicker">CAMPUS BUILDER</span>
+      <h1>Create a navigator for any college</h1>
+      <p>Enter the college name, campus center, and building coordinates. The same search, live GPS, map, and road navigation will use your new campus.</p>
+    </section>
+
+    <form id="setupForm" class="setup-form">
+      <section class="glass setup-card">
+        <div class="setup-section-title">1. Campus details</div>
+        <div class="setup-fields setup-fields-2">
+          <label>
+            College / university name
+            <input id="campusName" required maxlength="120" value="{{ campus.name }}">
+          </label>
+          <label>
+            Short label
+            <input id="shortName" maxlength="80" value="{{ campus.short_name }}" placeholder="Example: ABC UNIVERSITY">
+          </label>
+          <label>
+            Campus center latitude
+            <input id="centerLat" required type="number" step="any" value="{{ campus.center_lat }}">
+          </label>
+          <label>
+            Campus center longitude
+            <input id="centerLng" required type="number" step="any" value="{{ campus.center_lng }}">
+          </label>
+          <label>
+            Campus radius in metres
+            <input id="radiusM" required type="number" min="100" step="50" value="{{ campus.radius_m }}">
+            <small>Used to identify when someone is inside the campus.</small>
+          </label>
+          <label>
+            Starting map zoom
+            <input id="zoom" required type="number" min="10" max="20" step="1" value="{{ campus.zoom }}">
+            <small>17–19 is usually right for a campus.</small>
+          </label>
+        </div>
+        <div class="setup-note">
+          Find coordinates by right-clicking a point in Google Maps or OpenStreetMap and copying the latitude and longitude.
+          Saving replaces the current active campus in this demo.
+        </div>
+      </section>
+
+      <section class="glass setup-card">
+        <div class="setup-section-heading">
+          <div>
+            <div class="setup-section-title">2. Buildings and places</div>
+            <p>Add classrooms, departments, gates, offices, hostels, canteens, labs, or any searchable place.</p>
+          </div>
+          <button type="button" class="btn-secondary add-place-btn" id="addPlaceBtn">＋ Add place</button>
+        </div>
+        <div class="setup-table-wrap">
+          <table class="setup-table">
+            <thead>
+              <tr>
+                <th>Place name</th>
+                <th>Building</th>
+                <th>Floor</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>Type</th>
+                <th>Search keywords</th>
+                <th>Walking instructions</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="placesBody"></tbody>
+          </table>
+        </div>
+        <div class="setup-mobile-hint">On a phone, swipe the table sideways to reach all fields.</div>
+      </section>
+
+      <section class="setup-actions">
+        <div id="setupStatus" class="setup-status" role="status"></div>
+        <div class="setup-action-buttons">
+          <button type="button" class="btn-secondary" id="resetBtn">Restore VGU sample</button>
+          <button type="submit" class="btn-primary">Save this campus →</button>
+        </div>
+      </section>
+    </form>
+  </main>
+
+  <template id="placeTemplate">
+    <tr class="place-row">
+      <td><input class="place-name" required placeholder="Library"></td>
+      <td><input class="place-building" required placeholder="Main Block"></td>
+      <td><input class="place-floor" placeholder="Ground"></td>
+      <td><input class="place-lat" required type="number" step="any" placeholder="26.8123"></td>
+      <td><input class="place-lng" required type="number" step="any" placeholder="75.8935"></td>
+      <td><input class="place-type" placeholder="academic"></td>
+      <td><input class="place-keywords" placeholder="books, reading, study"></td>
+      <td><input class="place-instructions" placeholder="Enter through the main entrance"></td>
+      <td><button type="button" class="remove-place" title="Remove place" aria-label="Remove place">×</button></td>
+    </tr>
+  </template>
+
+  <script>
+    const body = document.getElementById("placesBody");
+    const template = document.getElementById("placeTemplate");
+    const status = document.getElementById("setupStatus");
+
+    function addPlace(place = {}) {
+      const row = template.content.cloneNode(true);
+      row.querySelector(".place-name").value = place.name || "";
+      row.querySelector(".place-building").value = place.building || "";
+      row.querySelector(".place-floor").value = place.floor || "Ground";
+      row.querySelector(".place-lat").value = place.lat ?? "";
+      row.querySelector(".place-lng").value = place.lng ?? "";
+      row.querySelector(".place-type").value = place.type || "general";
+      row.querySelector(".place-keywords").value = place.keywords || "";
+      row.querySelector(".place-instructions").value = place.instructions || "";
+      row.querySelector(".remove-place").addEventListener("click", (event) => {
+        event.target.closest("tr").remove();
+      });
+      body.appendChild(row);
+    }
+
+    function setStatus(message, kind) {
+      status.textContent = message;
+      status.className = "setup-status " + (kind || "");
+    }
+
+    document.getElementById("addPlaceBtn").addEventListener("click", () => addPlace());
+
+    fetch("/api/locations")
+      .then(response => response.json())
+      .then(locations => {
+        (locations || []).forEach(addPlace);
+        if (!locations || !locations.length) addPlace();
+      })
+      .catch(() => addPlace());
+
+    document.getElementById("setupForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const rows = [...body.querySelectorAll(".place-row")];
+      if (!rows.length) {
+        setStatus("Add at least one building or place.", "error");
+        return;
+      }
+      const locations = rows.map(row => ({
+        name: row.querySelector(".place-name").value.trim(),
+        building: row.querySelector(".place-building").value.trim(),
+        floor: row.querySelector(".place-floor").value.trim() || "Ground",
+        lat: row.querySelector(".place-lat").value,
+        lng: row.querySelector(".place-lng").value,
+        type: row.querySelector(".place-type").value.trim() || "general",
+        keywords: row.querySelector(".place-keywords").value.trim(),
+        instructions: row.querySelector(".place-instructions").value.trim()
+      }));
+      const payload = {
+        name: document.getElementById("campusName").value.trim(),
+        short_name: document.getElementById("shortName").value.trim(),
+        center_lat: document.getElementById("centerLat").value,
+        center_lng: document.getElementById("centerLng").value,
+        radius_m: document.getElementById("radiusM").value,
+        zoom: document.getElementById("zoom").value,
+        locations
+      };
+      setStatus("Saving campus…", "working");
+      try {
+        const response = await fetch("/api/campus", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not save campus");
+        setStatus(result.message + " — opening it now.", "success");
+        setTimeout(() => { window.location.href = "/"; }, 700);
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", async () => {
+      if (!confirm("Restore the bundled VGU Jaipur sample and replace the current campus?")) return;
+      setStatus("Restoring VGU sample…", "working");
+      const response = await fetch("/api/campus/reset", {method: "POST"});
+      const result = await response.json();
+      if (!response.ok) {
+        setStatus(result.error || "Could not restore VGU", "error");
+        return;
+      }
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

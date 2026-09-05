@@ -1,7 +1,8 @@
 """Campus Navigator Flask server.
 
 Maintenance note:
-- Edit campus places in data/locations.json, then open /sync to update SQLite.
+- VGU remains the default campus in data/locations.json.
+- Other campuses can be entered through /setup and are stored in SQLite.
 - Frontend pages are in templates/; browser behavior is in static/js/.
 """
 
@@ -11,6 +12,17 @@ import json
 import re
 
 app = Flask(__name__)
+
+DEFAULT_CAMPUS = {
+    "id": "vgu-jaipur",
+    "name": "VGU Jaipur",
+    "short_name": "VGU, JAIPUR",
+    "center_lat": 26.8123,
+    "center_lng": 75.8935,
+    "zoom": 18,
+    "radius_m": 650,
+    "routing_mode": "vgu",
+}
 
 # Panorama scenes are intentionally allowlisted so only published campus
 # scenes can be opened by URL. Add the next real photosphere here when it is
@@ -31,6 +43,8 @@ PANORAMA_SCENES = {
 
 def panorama_for_location(name):
     """Return a published panorama URL for a location, if one exists."""
+    if get_campus_config()["routing_mode"] != "vgu":
+        return ""
     scene = next(
         (scene for scene in PANORAMA_SCENES.values()
          if scene["title"].lower() == (name or "").lower()),
@@ -109,10 +123,194 @@ def get_db_connection():
     return conn
 
 
+def ensure_schema():
+    """Create the campus profile table without disturbing existing VGU data."""
+    conn = sqlite3.connect("campus.db")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS campus_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            campus_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            short_name TEXT NOT NULL,
+            center_lat REAL NOT NULL,
+            center_lng REAL NOT NULL,
+            zoom INTEGER NOT NULL DEFAULT 17,
+            radius_m REAL NOT NULL DEFAULT 1200,
+            routing_mode TEXT NOT NULL DEFAULT 'generic'
+        )
+    """)
+    existing = conn.execute(
+        "SELECT campus_id FROM campus_settings WHERE id = 1"
+    ).fetchone()
+    if not existing:
+        conn.execute("""
+            INSERT INTO campus_settings
+            (id, campus_id, name, short_name, center_lat, center_lng, zoom, radius_m, routing_mode)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            DEFAULT_CAMPUS["id"],
+            DEFAULT_CAMPUS["name"],
+            DEFAULT_CAMPUS["short_name"],
+            DEFAULT_CAMPUS["center_lat"],
+            DEFAULT_CAMPUS["center_lng"],
+            DEFAULT_CAMPUS["zoom"],
+            DEFAULT_CAMPUS["radius_m"],
+            DEFAULT_CAMPUS["routing_mode"],
+        ))
+    conn.commit()
+    conn.close()
+
+
+def get_campus_config():
+    conn = get_db_connection()
+    row = conn.execute("""
+        SELECT campus_id AS id, name, short_name, center_lat, center_lng,
+               zoom, radius_m, routing_mode
+        FROM campus_settings
+        WHERE id = 1
+    """).fetchone()
+    conn.close()
+    return dict(row) if row else dict(DEFAULT_CAMPUS)
+
+
+def campus_stats():
+    conn = get_db_connection()
+    locations = conn.execute("SELECT COUNT(*) FROM locations").fetchone()[0]
+    buildings = conn.execute("""
+        SELECT COUNT(DISTINCT building)
+        FROM locations
+        WHERE building IS NOT NULL AND TRIM(building) != ''
+    """).fetchone()[0]
+    conn.close()
+    return {"locations": locations, "buildings": buildings}
+
+
+def featured_locations():
+    """Return a small generic list for the home page instead of hard-coded VGU places."""
+    conn = get_db_connection()
+    rows = conn.execute("""
+        SELECT name, building, floor
+        FROM locations
+        ORDER BY name COLLATE NOCASE
+        LIMIT 8
+    """).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+
+def _clean_text(value, max_length=240):
+    return str(value or "").strip()[:max_length]
+
+
+def _number(value, field, minimum, maximum):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{field} must be a number")
+    if not minimum <= number <= maximum:
+        raise ValueError(f"{field} must be between {minimum} and {maximum}")
+    return number
+
+
+def save_campus_setup(payload):
+    """Validate and replace the active campus profile and its places."""
+    name = _clean_text(payload.get("name"), 120)
+    if len(name) < 2:
+        raise ValueError("College name is required")
+
+    center_lat = _number(payload.get("center_lat"), "Campus latitude", -90, 90)
+    center_lng = _number(payload.get("center_lng"), "Campus longitude", -180, 180)
+    zoom = int(_number(payload.get("zoom", 17), "Map zoom", 10, 20))
+    radius_m = _number(payload.get("radius_m", 1200), "Campus radius", 100, 100000)
+    places = payload.get("locations") or []
+    if not places:
+        raise ValueError("Add at least one building or place")
+
+    normalized_places = []
+    seen = set()
+    for index, place in enumerate(places, start=1):
+        place_name = _clean_text(place.get("name"), 120)
+        building = _clean_text(place.get("building"), 120)
+        if not place_name or not building:
+            raise ValueError(f"Place {index} needs a name and building")
+        lat = _number(place.get("lat"), f"Place {index} latitude", -90, 90)
+        lng = _number(place.get("lng"), f"Place {index} longitude", -180, 180)
+        floor = _clean_text(place.get("floor"), 80) or "Ground"
+        key = (place_name.casefold(), building.casefold(), floor.casefold())
+        if key in seen:
+            raise ValueError(f"Duplicate place: {place_name}")
+        seen.add(key)
+        normalized_places.append({
+            "name": place_name,
+            "building": building,
+            "floor": floor,
+            "lat": lat,
+            "lng": lng,
+            "type": _clean_text(place.get("type"), 40) or "general",
+            "image": _clean_text(place.get("image"), 500),
+            "instructions": _clean_text(place.get("instructions"), 500),
+            "entry_lat": _number(
+                place.get("entry_lat", lat), f"Place {index} entry latitude", -90, 90
+            ),
+            "entry_lng": _number(
+                place.get("entry_lng", lng), f"Place {index} entry longitude", -180, 180
+            ),
+            "keywords": _clean_text(place.get("keywords"), 500),
+        })
+
+    slug = re.sub(r"[^a-z0-9]+", "-", name.casefold()).strip("-")[:60] or "campus"
+    short_name = _clean_text(payload.get("short_name"), 80) or name
+    conn = sqlite3.connect("campus.db")
+    try:
+        conn.execute("DELETE FROM locations")
+        for place in normalized_places:
+            conn.execute("""
+                INSERT INTO locations
+                (name, building, floor, lat, lng, type, image, instructions,
+                 entry_lat, entry_lng, keywords)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                place["name"], place["building"], place["floor"],
+                place["lat"], place["lng"], place["type"], place["image"],
+                place["instructions"], place["entry_lat"], place["entry_lng"],
+                place["keywords"],
+            ))
+        conn.execute("""
+            INSERT INTO campus_settings
+            (id, campus_id, name, short_name, center_lat, center_lng,
+             zoom, radius_m, routing_mode)
+            VALUES (1, ?, ?, ?, ?, ?, ?, ?, 'generic')
+            ON CONFLICT(id) DO UPDATE SET
+              campus_id=excluded.campus_id,
+              name=excluded.name,
+              short_name=excluded.short_name,
+              center_lat=excluded.center_lat,
+              center_lng=excluded.center_lng,
+              zoom=excluded.zoom,
+              radius_m=excluded.radius_m,
+              routing_mode=excluded.routing_mode
+        """, (slug, name, short_name, center_lat, center_lng, zoom, radius_m))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+    return get_campus_config()
+
+
+ensure_schema()
+
+
 # ---------------- HOME ----------------
 @app.route("/")
 def home():
-    return render_template("home.html")
+    return render_template(
+        "home.html",
+        campus=get_campus_config(),
+        stats=campus_stats(),
+        featured_locations=featured_locations(),
+    )
 
 
 # ---------------- DIRECTIONS PAGE ----------------
@@ -121,13 +319,17 @@ def directions():
     query = request.args.get("q", "").strip()
 
     if not query:
-        return render_template("results.html", location=None, query=query)
+        return render_template(
+            "results.html", location=None, query=query, campus=get_campus_config()
+        )
 
     locations = find_locations(query, limit=1)
     location = locations[0] if locations else None
     if location:
         location["panorama_url"] = panorama_for_location(location["name"])
-    return render_template("results.html", location=location, query=query)
+    return render_template(
+        "results.html", location=location, query=query, campus=get_campus_config()
+    )
 
 
 # ---------------- MAP PAGE ----------------
@@ -135,7 +337,9 @@ def directions():
 def map_page():
     # Support both links generated by the app and manual URLs such as /map?q=Library.
     destination = request.args.get("destination") or request.args.get("q", "")
-    return render_template("map.html", destination=destination)
+    return render_template(
+        "map.html", destination=destination, campus=get_campus_config()
+    )
 
 
 # ---------------- SEARCH (JSON) ----------------
@@ -161,6 +365,39 @@ def panorama(scene_id):
     return render_template("panorama.html", scene=scene)
 
 
+# ---------------- CAMPUS SETUP ----------------
+@app.route("/setup")
+def setup_page():
+    return render_template("setup.html", campus=get_campus_config())
+
+
+@app.route("/api/campus", methods=["GET", "POST"])
+def campus_api():
+    if request.method == "GET":
+        return jsonify(get_campus_config())
+    payload = request.get_json(silent=True) or {}
+    try:
+        campus = save_campus_setup(payload)
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    return jsonify({
+        "campus": campus,
+        "stats": campus_stats(),
+        "message": f"{campus['name']} is now the active campus",
+    })
+
+
+@app.route("/api/campus/reset", methods=["POST"])
+def reset_campus():
+    """Restore the bundled VGU dataset for testing or demonstration."""
+    sync_json_to_db()
+    return jsonify({
+        "campus": get_campus_config(),
+        "stats": campus_stats(),
+        "message": "VGU Jaipur has been restored",
+    })
+
+
 # ---------------- SUGGEST ----------------
 @app.route("/suggest")
 def suggest():
@@ -176,9 +413,10 @@ def sync_json_to_db():
     with open("data/locations.json", "r") as file:
         data = json.load(file)
 
+    cursor.execute("DELETE FROM locations")
     for loc in data:
         cursor.execute("""
-        INSERT OR REPLACE INTO locations
+        INSERT INTO locations
         (name, building, floor, lat, lng, type, image, instructions, entry_lat, entry_lng, keywords)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
@@ -195,6 +433,21 @@ def sync_json_to_db():
             loc.get("keywords", ""),
         ))
 
+    cursor.execute("""
+        UPDATE campus_settings
+        SET campus_id = ?, name = ?, short_name = ?, center_lat = ?,
+            center_lng = ?, zoom = ?, radius_m = ?, routing_mode = ?
+        WHERE id = 1
+    """, (
+        DEFAULT_CAMPUS["id"],
+        DEFAULT_CAMPUS["name"],
+        DEFAULT_CAMPUS["short_name"],
+        DEFAULT_CAMPUS["center_lat"],
+        DEFAULT_CAMPUS["center_lng"],
+        DEFAULT_CAMPUS["zoom"],
+        DEFAULT_CAMPUS["radius_m"],
+        DEFAULT_CAMPUS["routing_mode"],
+    ))
     conn.commit()
     conn.close()
     print("JSON synced to DB")
@@ -203,7 +456,7 @@ def sync_json_to_db():
 # ---------------- NEARBY PAGE ----------------
 @app.route("/nearby")
 def nearby():
-    return render_template("nearby.html")
+    return render_template("nearby.html", campus=get_campus_config())
 
 
 # ---------------- ALL LOCATIONS API ----------------
@@ -211,7 +464,9 @@ def nearby():
 def all_locations():
     conn = get_db_connection()
     rows = conn.execute(
-        "SELECT name, building, floor, lat, lng, type, instructions FROM locations"
+        """SELECT name, building, floor, lat, lng, type, image, instructions,
+                  entry_lat, entry_lng, keywords
+           FROM locations"""
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
@@ -221,7 +476,11 @@ def all_locations():
 @app.route("/sync")
 def sync():
     sync_json_to_db()
-    return "Data synchronized successfully!"
+    return jsonify({
+        "campus": get_campus_config(),
+        "stats": campus_stats(),
+        "message": "VGU data synchronized successfully",
+    })
 
 
 # ---------------- RUN ----------------
