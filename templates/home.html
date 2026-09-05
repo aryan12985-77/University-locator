@@ -50,7 +50,7 @@
 <div class="home-page">
 
   <div class="top-bar" id="hp-topbar">
-    <a class="logo" href="/">
+    <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) }}">
       <div class="logo-icon-wrap">
         <svg class="logo-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="18" cy="18" r="17" fill="url(#lgh)" opacity="0.15"/>
@@ -71,7 +71,11 @@
     </a>
     <div style="display:flex;align-items:center;gap:10px;">
       <div class="vgu-badge">{{ campus.short_name }}</div>
-      <a class="setup-link" href="/setup">Set up a college</a>
+      {% if campus.owner_claimed %}
+      <a class="setup-link" href="{{ url_for('campus_admin', slug=campus.slug) }}">Manage campus</a>
+      {% else %}
+      <a class="setup-link" href="{{ url_for('campus_admin', slug=campus.slug) }}">Claim campus</a>
+      {% endif %}
     </div>
   </div>
 
@@ -112,7 +116,7 @@
       <div class="footstep-trail" id="footstepTrail"></div>
     </div>
 
-    <a href="/nearby" class="near-me-btn" id="hp-nearby">
+    <a href="{{ url_for('campus_nearby', slug=campus.slug) }}" class="near-me-btn" id="hp-nearby">
       <span class="nm-pulse"></span>
       <span class="nm-icon">📍</span>
       <span class="nm-text">
@@ -179,6 +183,7 @@
 </div>
 
 <script>
+const campusSlug = {{ campus.slug | tojson }};
 /* ═══════════════════════════════════════════════════════
    FLOATING CAMPUS ICONS  (deferred — called after intro)
 ═══════════════════════════════════════════════════════ */
@@ -577,7 +582,7 @@ input.addEventListener('input', function () {
   lastInputLen = len;
 
   if (!val) { box.style.display='none'; box.innerHTML=''; return; }
-  fetch('/suggest?q=' + encodeURIComponent(val))
+  fetch('/suggest?campus=' + encodeURIComponent(campusSlug) + '&q=' + encodeURIComponent(val))
     .then(r => r.json())
     .then(data => {
       box.innerHTML = '';
@@ -618,7 +623,7 @@ function triggerSearch(term) {
     leftPx += 16;
     smTrack.style.left = leftPx + 'px';
     if (leftPx < cardW - 10) requestAnimationFrame(runFast);
-    else setTimeout(() => { window.location = '/directions?q=' + encodeURIComponent(val); }, 180);
+    else setTimeout(() => { window.location = '/c/' + encodeURIComponent(campusSlug) + '/directions?q=' + encodeURIComponent(val); }, 180);
   })();
 }
 

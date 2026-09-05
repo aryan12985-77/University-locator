@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ plan.title if plan else "Indoor map" }} — {{ campus.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="floorplan-page">
+  <header class="floorplan-header">
+    <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) }}">Campus Navigator</a>
+    <a class="btn-secondary" href="{{ url_for('campus_home', slug=campus.slug) }}">← {{ campus.short_name }}</a>
+  </header>
+  <main class="floorplan-shell">
+    <div class="floorplan-heading">
+      <div><span class="setup-kicker">INDOOR NAVIGATION</span>
+        <h1>{{ plan.title if plan else "No floor plan yet" }}</h1>
+        <p>{{ campus.name }} · room markers are searchable and positioned from the floor-plan image.</p>
+      </div>
+      {% if plans %}
+      <div class="floor-tabs">
+        {% for item in plans %}
+        <a class="{% if plan and item.floor == plan.floor %}active{% endif %}" href="{{ url_for('campus_floorplan', slug=campus.slug, floor=item.floor) }}">{{ item.floor }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% if plan %}
+    <section class="floorplan-board" style="aspect-ratio: {{ plan.width }}/{{ plan.height }}">
+      <img src="{{ plan.image_url }}" alt="{{ plan.title }}" class="floorplan-image">
+      {% for room in rooms %}
+      <a class="room-marker" href="{{ url_for('campus_floorplan', slug=campus.slug, floor=room.floor) }}" style="left:{{ room.x }}%;top:{{ room.y }}%" title="{{ room.instructions }}">
+        <span>●</span><strong>{{ room.name }}</strong>
+      </a>
+      {% endfor %}
+    </section>
+    {% else %}
+    <section class="glass floorplan-empty">
+      <div class="nf-icon">⌗</div>
+      <h2>No floor plan published</h2>
+      <p>An owner can add a floor-plan image and room points from the campus admin page.</p>
+      <a class="btn-primary" href="{{ url_for('campus_admin', slug=campus.slug) }}">Open campus admin</a>
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>

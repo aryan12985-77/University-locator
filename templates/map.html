@@ -17,7 +17,7 @@
 
   <!-- TOP BAR -->
   <div class="top-bar">
-    <a class="logo" href="/">
+    <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) }}">
       <div class="logo-icon-wrap">
         <svg class="logo-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="18" cy="18" r="17" fill="url(#lgm)" opacity="0.15"/>
@@ -37,10 +37,10 @@
       <span>Campus Navigator</span>
     </a>
     <div style="display:flex;gap:8px;align-items:center;">
-      <a href="/directions?q={{ destination | urlencode }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;border-radius:50px;">
+      <a href="{{ url_for('campus_directions', slug=campus.slug) }}?q={{ destination | urlencode }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;border-radius:50px;">
         ← Directions
       </a>
-      <a href="/" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;border-radius:50px;">
+      <a href="{{ url_for('campus_home', slug=campus.slug) }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;border-radius:50px;">
         🔍 New Search
       </a>
     </div>
@@ -73,7 +73,7 @@
       <div class="fi-title" id="fiTitle">—</div>
       <div class="fi-meta"  id="fiMeta">—</div>
       <div class="fi-row">
-        <a href="/" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;">🔍 New Search</a>
+        <a href="{{ url_for('campus_home', slug=campus.slug) }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;">🔍 New Search</a>
         <button class="btn-primary" onclick="locateUser()" style="padding:8px 14px;font-size:0.78rem;">📍 My Route</button>
       </div>
     </div>

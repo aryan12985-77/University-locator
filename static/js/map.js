@@ -513,7 +513,7 @@ window.onload = function () {
   setTimeout(() => map.invalidateSize(), 300);
   initDeviceOrientation();
   initMapControls();
-  fetch("/api/locations")
+  fetch("/api/locations?campus=" + encodeURIComponent(CAMPUS_PROFILE.slug || "vgu-jaipur"))
     .then(function (response) { return response.json(); })
     .then(function (locations) { campusLocations = locations || []; })
     .catch(function (error) { console.warn("Building lookup unavailable", error); });
@@ -676,7 +676,8 @@ function updateMovementHeading(heading) {
 function loadDestination() {
   if (!destination) return;
 
-  fetch("/search?q=" + encodeURIComponent(destination))
+  fetch("/c/" + encodeURIComponent(CAMPUS_PROFILE.slug || "vgu-jaipur") +
+        "/search?q=" + encodeURIComponent(destination))
     .then(r => r.json())
     .then(function(loc) {
       if (!loc || !loc.name) return;

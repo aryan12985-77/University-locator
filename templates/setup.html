@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Set up a college — Campus Navigator</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%234f46e5'/%3E%3Ccircle cx='16' cy='13' r='5' fill='white'/%3E%3C/svg%3E">
+  <title>{{ "Edit" if mode == "edit" else "Create" }} campus — Campus Navigator</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%234f46e5'/%3E%3Ccircle cx='16' cy='13' r='5' fill='white'/%3E%3C/svg%3E">
 </head>
 <body class="setup-page">
   <div class="map-grid-bg"></div>
   <main class="setup-shell">
     <header class="setup-header">
-      <a class="logo" href="/">
+      <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) if campus else '/' }}">
         <div class="logo-icon-wrap">
           <svg class="logo-svg" viewBox="0 0 36 36" fill="none" aria-hidden="true">
             <circle cx="18" cy="18" r="17" fill="#4f46e5" opacity=".15"/>
@@ -22,112 +22,171 @@
         </div>
         <span>Campus Navigator</span>
       </a>
-      <a class="btn-secondary setup-back" href="/">← Back to campus</a>
+      <div class="setup-header-actions">
+        {% if campus %}
+        <a class="btn-secondary setup-back" href="{{ url_for('campus_home', slug=campus.slug) }}">← View campus</a>
+        <a class="btn-secondary setup-back" href="{{ url_for('campus_admin_logout', slug=campus.slug) }}">Log out</a>
+        {% else %}
+        <a class="btn-secondary setup-back" href="/">← Home</a>
+        {% endif %}
+      </div>
     </header>
 
     <section class="setup-hero">
-      <span class="setup-kicker">CAMPUS BUILDER</span>
-      <h1>Create a navigator for any college</h1>
-      <p>Enter the college name, campus center, and building coordinates. The same search, live GPS, map, and road navigation will use your new campus.</p>
+      <span class="setup-kicker">{{ "CAMPUS ADMIN" if mode == "edit" else "CAMPUS BUILDER" }}</span>
+      <h1>{{ "Manage " + campus.name if campus else "Create a navigator for any college" }}</h1>
+      <p>Set up a searchable campus with live GPS navigation, shareable URLs, and optional indoor floor plans.</p>
     </section>
 
     <form id="setupForm" class="setup-form">
       <section class="glass setup-card">
         <div class="setup-section-title">1. Campus details</div>
         <div class="setup-fields setup-fields-2">
-          <label>
-            College / university name
-            <input id="campusName" required maxlength="120" value="{{ campus.name }}">
+          <label>College / university name
+            <input id="campusName" required maxlength="120" value="{{ campus.name if campus else '' }}" placeholder="Example University">
           </label>
-          <label>
-            Short label
-            <input id="shortName" maxlength="80" value="{{ campus.short_name }}" placeholder="Example: ABC UNIVERSITY">
+          <label>Short label
+            <input id="shortName" maxlength="80" value="{{ campus.short_name if campus else '' }}" placeholder="Example: ABC UNIVERSITY">
           </label>
-          <label>
-            Campus center latitude
-            <input id="centerLat" required type="number" step="any" value="{{ campus.center_lat }}">
+          <label>Campus center latitude
+            <input id="centerLat" required type="number" step="any" value="{{ campus.center_lat if campus else '' }}">
           </label>
-          <label>
-            Campus center longitude
-            <input id="centerLng" required type="number" step="any" value="{{ campus.center_lng }}">
+          <label>Campus center longitude
+            <input id="centerLng" required type="number" step="any" value="{{ campus.center_lng if campus else '' }}">
           </label>
-          <label>
-            Campus radius in metres
-            <input id="radiusM" required type="number" min="100" step="50" value="{{ campus.radius_m }}">
-            <small>Used to identify when someone is inside the campus.</small>
+          <label>Campus radius in metres
+            <input id="radiusM" required type="number" min="100" step="50" value="{{ campus.radius_m if campus else 1200 }}">
+            <small>Used to identify when someone is inside campus.</small>
           </label>
-          <label>
-            Starting map zoom
-            <input id="zoom" required type="number" min="10" max="20" step="1" value="{{ campus.zoom }}">
+          <label>Starting map zoom
+            <input id="zoom" required type="number" min="10" max="20" step="1" value="{{ campus.zoom if campus else 17 }}">
             <small>17–19 is usually right for a campus.</small>
           </label>
+          {% if mode != "edit" %}
+          <label>Owner password
+            <input id="ownerPassword" required minlength="8" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+            <small>Only the owner can edit this campus later.</small>
+          </label>
+          {% else %}
+          <label>Change owner password <span class="optional-label">(optional)</span>
+            <input id="ownerPassword" minlength="8" type="password" autocomplete="new-password" placeholder="Leave blank to keep it">
+          </label>
+          {% endif %}
         </div>
-        <div class="setup-note">
-          Find coordinates by right-clicking a point in Google Maps or OpenStreetMap and copying the latitude and longitude.
-          Saving replaces the current active campus in this demo.
-        </div>
+        <div class="setup-note">Coordinates can be copied from Google Maps or OpenStreetMap. Save creates a separate campus profile; it no longer replaces another college.</div>
       </section>
 
       <section class="glass setup-card">
         <div class="setup-section-heading">
           <div>
             <div class="setup-section-title">2. Buildings and places</div>
-            <p>Add classrooms, departments, gates, offices, hostels, canteens, labs, or any searchable place.</p>
+            <p>These records power search, nearby results, map pins, road routing, and directions.</p>
           </div>
           <button type="button" class="btn-secondary add-place-btn" id="addPlaceBtn">＋ Add place</button>
         </div>
         <div class="setup-table-wrap">
           <table class="setup-table">
-            <thead>
-              <tr>
-                <th>Place name</th>
-                <th>Building</th>
-                <th>Floor</th>
-                <th>Latitude</th>
-                <th>Longitude</th>
-                <th>Type</th>
-                <th>Search keywords</th>
-                <th>Walking instructions</th>
-                <th></th>
-              </tr>
-            </thead>
+            <thead><tr>
+              <th>Place</th><th>Building</th><th>Floor</th><th>Latitude</th><th>Longitude</th>
+              <th>Type</th><th>Keywords</th><th>Instructions</th><th></th>
+            </tr></thead>
             <tbody id="placesBody"></tbody>
           </table>
         </div>
-        <div class="setup-mobile-hint">On a phone, swipe the table sideways to reach all fields.</div>
+        <div class="setup-mobile-hint">On a phone, swipe this table sideways to reach all fields.</div>
+      </section>
+
+      <section class="glass setup-card">
+        <div class="setup-section-heading">
+          <div>
+            <div class="setup-section-title">3. Optional indoor maps</div>
+            <p>Use a public image URL for a floor plan, then position searchable rooms as percentages from the top-left.</p>
+          </div>
+          <button type="button" class="btn-secondary add-place-btn" id="addPlanBtn">＋ Add floor plan</button>
+        </div>
+        <div class="setup-table-wrap">
+          <table class="setup-table indoor-table">
+            <thead><tr><th>Floor</th><th>Title</th><th>Image URL</th><th>Width</th><th>Height</th><th></th></tr></thead>
+            <tbody id="plansBody"></tbody>
+          </table>
+        </div>
+        <div class="setup-section-heading room-heading">
+          <div><div class="setup-section-title">Room points</div><p>Room search opens the matching floor plan and highlights the room.</p></div>
+          <button type="button" class="btn-secondary add-place-btn" id="addRoomBtn">＋ Add room</button>
+        </div>
+        <div class="setup-table-wrap">
+          <table class="setup-table room-table">
+            <thead><tr><th>Room</th><th>Building</th><th>Floor</th><th>X %</th><th>Y %</th><th>Keywords</th><th>Instructions</th><th></th></tr></thead>
+            <tbody id="roomsBody"></tbody>
+          </table>
+        </div>
       </section>
 
       <section class="setup-actions">
         <div id="setupStatus" class="setup-status" role="status"></div>
-        <div class="setup-action-buttons">
-          <button type="button" class="btn-secondary" id="resetBtn">Restore VGU sample</button>
-          <button type="submit" class="btn-primary">Save this campus →</button>
-        </div>
+        <button type="submit" class="btn-primary">{{ "Save changes" if mode == "edit" else "Create campus" }} →</button>
       </section>
     </form>
+
+    {% if not campus and campuses %}
+    <section class="setup-existing">
+      <div class="setup-section-title">Existing campus profiles</div>
+      <div class="campus-list">
+        {% for item in campuses %}
+        <a class="campus-list-item" href="{{ url_for('campus_home', slug=item.slug) }}">
+          <span><strong>{{ item.name }}</strong><small>{{ item.short_name }}</small></span>
+          <span>Open →</span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
   </main>
 
-  <template id="placeTemplate">
-    <tr class="place-row">
-      <td><input class="place-name" required placeholder="Library"></td>
-      <td><input class="place-building" required placeholder="Main Block"></td>
-      <td><input class="place-floor" placeholder="Ground"></td>
-      <td><input class="place-lat" required type="number" step="any" placeholder="26.8123"></td>
-      <td><input class="place-lng" required type="number" step="any" placeholder="75.8935"></td>
-      <td><input class="place-type" placeholder="academic"></td>
-      <td><input class="place-keywords" placeholder="books, reading, study"></td>
-      <td><input class="place-instructions" placeholder="Enter through the main entrance"></td>
-      <td><button type="button" class="remove-place" title="Remove place" aria-label="Remove place">×</button></td>
-    </tr>
-  </template>
+  <template id="placeTemplate"><tr class="place-row">
+    <td><input class="place-name" required placeholder="Library"></td>
+    <td><input class="place-building" required placeholder="Main Block"></td>
+    <td><input class="place-floor" placeholder="Ground"></td>
+    <td><input class="place-lat" required type="number" step="any" placeholder="26.8123"></td>
+    <td><input class="place-lng" required type="number" step="any" placeholder="75.8935"></td>
+    <td><input class="place-type" placeholder="academic"></td>
+    <td><input class="place-keywords" placeholder="books, reading"></td>
+    <td><input class="place-instructions" placeholder="Enter through main entrance"></td>
+    <td><button type="button" class="remove-place" aria-label="Remove place">×</button></td>
+  </tr></template>
+  <template id="planTemplate"><tr class="plan-row">
+    <td><input class="plan-floor" required placeholder="Ground"></td>
+    <td><input class="plan-title" placeholder="Ground floor plan"></td>
+    <td><input class="plan-image" required type="url" placeholder="https://.../floor.png"></td>
+    <td><input class="plan-width" type="number" min="1" value="1000"></td>
+    <td><input class="plan-height" type="number" min="1" value="700"></td>
+    <td><button type="button" class="remove-place" aria-label="Remove floor plan">×</button></td>
+  </tr></template>
+  <template id="roomTemplate"><tr class="room-row">
+    <td><input class="room-name" required placeholder="LT-202"></td>
+    <td><input class="room-building" required placeholder="Tech Block"></td>
+    <td><input class="room-floor" required placeholder="2nd Floor"></td>
+    <td><input class="room-x" required type="number" min="0" max="100" step="any" placeholder="52"></td>
+    <td><input class="room-y" required type="number" min="0" max="100" step="any" placeholder="38"></td>
+    <td><input class="room-keywords" placeholder="lecture theatre"></td>
+    <td><input class="room-instructions" placeholder="Left corridor"></td>
+    <td><button type="button" class="remove-place" aria-label="Remove room">×</button></td>
+  </tr></template>
 
   <script>
+    const editing = {{ "true" if mode == "edit" else "false" }};
+    const campusSlug = {{ (campus.slug if campus else "") | tojson }};
     const body = document.getElementById("placesBody");
-    const template = document.getElementById("placeTemplate");
+    const plansBody = document.getElementById("plansBody");
+    const roomsBody = document.getElementById("roomsBody");
     const status = document.getElementById("setupStatus");
+    const floorData = {{ floor_data | tojson }};
 
+    function bindRemove(row) {
+      row.querySelector(".remove-place").addEventListener("click", e => e.target.closest("tr").remove());
+    }
     function addPlace(place = {}) {
-      const row = template.content.cloneNode(true);
+      const row = document.getElementById("placeTemplate").content.cloneNode(true);
       row.querySelector(".place-name").value = place.name || "";
       row.querySelector(".place-building").value = place.building || "";
       row.querySelector(".place-floor").value = place.floor || "Ground";
@@ -136,43 +195,68 @@
       row.querySelector(".place-type").value = place.type || "general";
       row.querySelector(".place-keywords").value = place.keywords || "";
       row.querySelector(".place-instructions").value = place.instructions || "";
-      row.querySelector(".remove-place").addEventListener("click", (event) => {
-        event.target.closest("tr").remove();
-      });
-      body.appendChild(row);
+      body.appendChild(row); bindRemove(body.lastElementChild);
     }
-
+    function addPlan(plan = {}) {
+      const row = document.getElementById("planTemplate").content.cloneNode(true);
+      row.querySelector(".plan-floor").value = plan.floor || "";
+      row.querySelector(".plan-title").value = plan.title || "";
+      row.querySelector(".plan-image").value = plan.image_url || "";
+      row.querySelector(".plan-width").value = plan.width || 1000;
+      row.querySelector(".plan-height").value = plan.height || 700;
+      plansBody.appendChild(row); bindRemove(plansBody.lastElementChild);
+    }
+    function addRoom(room = {}) {
+      const row = document.getElementById("roomTemplate").content.cloneNode(true);
+      row.querySelector(".room-name").value = room.name || "";
+      row.querySelector(".room-building").value = room.building || "";
+      row.querySelector(".room-floor").value = room.floor || "";
+      row.querySelector(".room-x").value = room.x ?? "";
+      row.querySelector(".room-y").value = room.y ?? "";
+      row.querySelector(".room-keywords").value = room.keywords || "";
+      row.querySelector(".room-instructions").value = room.instructions || "";
+      roomsBody.appendChild(row); bindRemove(roomsBody.lastElementChild);
+    }
     function setStatus(message, kind) {
-      status.textContent = message;
-      status.className = "setup-status " + (kind || "");
+      status.textContent = message; status.className = "setup-status " + (kind || "");
+    }
+    document.getElementById("addPlaceBtn").onclick = () => addPlace();
+    document.getElementById("addPlanBtn").onclick = () => addPlan();
+    document.getElementById("addRoomBtn").onclick = () => addRoom();
+
+    if (editing) {
+      fetch("/api/locations?campus=" + encodeURIComponent(campusSlug))
+        .then(r => r.json()).then(items => (items || []).forEach(addPlace));
+      (floorData.floor_plans || []).forEach(addPlan);
+      (floorData.room_points || []).forEach(addRoom);
+    } else {
+      addPlace();
     }
 
-    document.getElementById("addPlaceBtn").addEventListener("click", () => addPlace());
-
-    fetch("/api/locations")
-      .then(response => response.json())
-      .then(locations => {
-        (locations || []).forEach(addPlace);
-        if (!locations || !locations.length) addPlace();
-      })
-      .catch(() => addPlace());
-
-    document.getElementById("setupForm").addEventListener("submit", async (event) => {
+    document.getElementById("setupForm").onsubmit = async (event) => {
       event.preventDefault();
-      const rows = [...body.querySelectorAll(".place-row")];
-      if (!rows.length) {
-        setStatus("Add at least one building or place.", "error");
-        return;
-      }
-      const locations = rows.map(row => ({
+      const locations = [...body.querySelectorAll(".place-row")].map(row => ({
         name: row.querySelector(".place-name").value.trim(),
         building: row.querySelector(".place-building").value.trim(),
         floor: row.querySelector(".place-floor").value.trim() || "Ground",
-        lat: row.querySelector(".place-lat").value,
-        lng: row.querySelector(".place-lng").value,
+        lat: row.querySelector(".place-lat").value, lng: row.querySelector(".place-lng").value,
         type: row.querySelector(".place-type").value.trim() || "general",
         keywords: row.querySelector(".place-keywords").value.trim(),
         instructions: row.querySelector(".place-instructions").value.trim()
+      }));
+      const floor_plans = [...plansBody.querySelectorAll(".plan-row")].map(row => ({
+        floor: row.querySelector(".plan-floor").value.trim(),
+        title: row.querySelector(".plan-title").value.trim(),
+        image_url: row.querySelector(".plan-image").value.trim(),
+        width: row.querySelector(".plan-width").value, height: row.querySelector(".plan-height").value
+      }));
+      const room_points = [...roomsBody.querySelectorAll(".room-row")].map(row => ({
+        name: row.querySelector(".room-name").value.trim(),
+        building: row.querySelector(".room-building").value.trim(),
+        floor: row.querySelector(".room-floor").value.trim(),
+        x: row.querySelector(".room-x").value, y: row.querySelector(".room-y").value,
+        keywords: row.querySelector(".room-keywords").value.trim(),
+        instructions: row.querySelector(".room-instructions").value.trim()
       }));
       const payload = {
         name: document.getElementById("campusName").value.trim(),
@@ -181,35 +265,25 @@
         center_lng: document.getElementById("centerLng").value,
         radius_m: document.getElementById("radiusM").value,
         zoom: document.getElementById("zoom").value,
-        locations
+        owner_password: document.getElementById("ownerPassword")?.value || "",
+        locations, floor_plans, room_points
       };
-      setStatus("Saving campus…", "working");
+      setStatus("Saving…", "working");
+      const endpoint = editing ? "/api/campus/" + encodeURIComponent(campusSlug) : "/api/campuses";
       try {
-        const response = await fetch("/api/campus", {
-          method: "POST",
+        const response = await fetch(endpoint, {
+          method: editing ? "PUT" : "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(payload)
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Could not save campus");
-        setStatus(result.message + " — opening it now.", "success");
-        setTimeout(() => { window.location.href = "/"; }, 700);
-      } catch (error) {
-        setStatus(error.message, "error");
-      }
-    });
-
-    document.getElementById("resetBtn").addEventListener("click", async () => {
-      if (!confirm("Restore the bundled VGU Jaipur sample and replace the current campus?")) return;
-      setStatus("Restoring VGU sample…", "working");
-      const response = await fetch("/api/campus/reset", {method: "POST"});
-      const result = await response.json();
-      if (!response.ok) {
-        setStatus(result.error || "Could not restore VGU", "error");
-        return;
-      }
-      window.location.reload();
-    });
+        setStatus(result.message, "success");
+        setTimeout(() => {
+          window.location.href = editing ? "/c/" + campusSlug : result.url;
+        }, 500);
+      } catch (error) { setStatus(error.message, "error"); }
+    };
   </script>
 </body>
 </html>

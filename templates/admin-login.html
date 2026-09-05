@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Owner login — {{ campus.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="setup-page">
+  <main class="auth-card glass">
+    <div class="setup-kicker">CAMPUS ADMIN</div>
+    <h1>Manage {{ campus.name }}</h1>
+    <p>Enter the owner password to edit buildings, rooms, and floor plans.</p>
+    {% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ url_for('campus_admin_login', slug=campus.slug) }}">
+      <label>Owner password
+        <input required type="password" name="password" autocomplete="current-password">
+      </label>
+      <button class="btn-primary" type="submit">Sign in →</button>
+    </form>
+    <a class="btn-secondary" href="{{ url_for('campus_home', slug=campus.slug) }}">← Back to campus</a>
+  </main>
+</body>
+</html>

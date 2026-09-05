@@ -17,7 +17,7 @@
 
   <!-- TOP BAR -->
   <div class="top-bar">
-    <a class="logo" href="/">
+    <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) }}">
       <div class="logo-icon-wrap">
         <svg class="logo-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="18" cy="18" r="17" fill="url(#lgn)" opacity="0.15"/>
@@ -36,7 +36,7 @@
       </div>
       <span>Campus Navigator</span>
     </a>
-    <a href="/" class="btn-secondary" style="padding:8px 16px;font-size:0.78rem;border-radius:50px;">← Home</a>
+    <a href="{{ url_for('campus_home', slug=campus.slug) }}" class="btn-secondary" style="padding:8px 16px;font-size:0.78rem;border-radius:50px;">← Home</a>
   </div>
 
   <!-- HERO ROW -->
@@ -162,7 +162,7 @@ function renderList() {
 
     return `
     <div class="nb-card glass" style="animation-delay:${delay}s"
-         onclick="window.location='/directions?q=${encodeURIComponent(loc.name)}'">
+         onclick="window.location='/c/' + encodeURIComponent(campusSlug) + '/directions?q=' + encodeURIComponent(loc.name)">
       <div class="nb-icon">${catIcon(cat)}</div>
       <div class="nb-info">
         <div class="nb-name">${loc.name}</div>
@@ -225,7 +225,8 @@ function startGPS() {
 }
 
 /* ── Boot ──────────────────────────────────────── */
-fetch('/api/locations')
+const campusSlug = {{ campus.slug | tojson }};
+fetch('/api/locations?campus=' + encodeURIComponent(campusSlug))
   .then(r => r.json())
   .then(data => {
     allLocations = data;

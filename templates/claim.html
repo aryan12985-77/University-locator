@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claim {{ campus.name }} — Campus Navigator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="setup-page">
+  <main class="auth-card glass">
+    <div class="setup-kicker">FIRST ADMIN SETUP</div>
+    <h1>Claim {{ campus.name }}</h1>
+    <p>This bundled sample has no owner yet. Set a password to protect its editor.</p>
+    {% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ url_for('claim_campus', slug=campus.slug) }}">
+      <label>New owner password
+        <input required minlength="8" type="password" name="password" autocomplete="new-password">
+      </label>
+      <button class="btn-primary" type="submit">Claim campus →</button>
+    </form>
+    <a class="btn-secondary" href="{{ url_for('campus_home', slug=campus.slug) }}">← Back to campus</a>
+  </main>
+</body>
+</html>

@@ -30,7 +30,7 @@
 
   <!-- TOP BAR -->
   <div class="top-bar">
-    <a class="logo" href="/">
+    <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) }}">
       <div class="logo-icon-wrap">
         <svg class="logo-svg" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="18" cy="18" r="17" fill="url(#lgr)" opacity="0.15"/>
@@ -115,6 +115,16 @@
     </div>
     {% endif %}
 
+    {% if location.room_x is defined and location.room_x is not none %}
+    <div class="glass panorama-entry-card a1">
+      <div>
+        <div class="section-title">Indoor room location</div>
+        <p class="map-desc">Open the published floor plan to see where {{ location.name }} is located inside {{ location.building }}.</p>
+      </div>
+      <a class="btn-primary" href="{{ url_for('campus_floorplan', slug=campus.slug, floor=location.floor) }}">Open floor plan</a>
+    </div>
+    {% endif %}
+
     <!-- DIRECTIONS CARD -->
     <div class="glass directions-card a2">
       <div class="section-title">Step-by-Step Directions</div>
@@ -134,7 +144,7 @@
           <span id="mapBtnIcon">🗺</span>
           <span id="mapBtnTxt">Show on Map</span>
         </button>
-        <a class="btn-secondary" href="/map?destination={{ location.name | urlencode }}">
+        <a class="btn-secondary" href="{{ url_for('campus_map', slug=campus.slug) }}?destination={{ location.name | urlencode }}">
           🧭 Full Map View
         </a>
       </div>
@@ -156,7 +166,7 @@
       <div class="nf-icon">🔍</div>
       <h2>Place Not Found</h2>
       <p>We couldn't find "<strong>{{ query }}</strong>" in the campus database. Try a different name or browse categories below.</p>
-      <a class="btn-primary" href="/">← Back to Home</a>
+      <a class="btn-primary" href="{{ url_for('campus_home', slug=campus.slug) }}">← Back to Home</a>
     </div>
 
     {% endif %}
@@ -180,7 +190,10 @@ const LOC = {
   lng:          {{ location.lng }},
   entry_lat:    {{ location.entry_lat if location.entry_lat else location.lat }},
   entry_lng:    {{ location.entry_lng if location.entry_lng else location.lng }},
-  instructions: {{ (location.instructions or '') | tojson }}
+  instructions: {{ (location.instructions or '') | tojson }},
+  room_x:      {{ (location.room_x if location.room_x is defined else none) | tojson }},
+  room_y:      {{ (location.room_y if location.room_y is defined else none) | tojson }},
+  room_floor:  {{ location.floor | tojson }}
 };
 
 function escapeHtml(value) {
