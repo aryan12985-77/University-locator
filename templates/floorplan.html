@@ -10,7 +10,7 @@
 <body class="floorplan-page">
   <header class="floorplan-header">
     <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) }}">Campus Navigator</a>
-    <a class="btn-secondary" href="{{ url_for('campus_home', slug=campus.slug) }}">← {{ campus.short_name }}</a>
+    <a class="btn-secondary" href="{{ url_for('campus_home', slug=campus.slug) }}">← {{ "Campus Navigator" if campus.slug == "vgu-jaipur" else campus.short_name }}</a>
   </header>
   <main class="floorplan-shell">
     <div class="floorplan-heading">

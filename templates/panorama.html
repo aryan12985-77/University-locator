@@ -11,7 +11,7 @@
 </head>
 <body class="panorama-page">
   <header class="panorama-topbar">
-    <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) }}">{{ campus.name }}</a>
+    <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) }}">{{ "Campus Navigator" if campus.slug == "vgu-jaipur" else campus.name }}</a>
     <a class="btn-secondary panorama-back" href="{{ back_url }}">← Back</a>
   </header>
 
