@@ -67,14 +67,15 @@
           </defs>
         </svg>
       </div>
-      <span>Campus Navigator</span>
+      <span class="logo-wordmark">Campus Navigator <small>{{ campus.short_name }}</small></span>
     </a>
-    <div style="display:flex;align-items:center;gap:10px;">
+    <div class="campus-header-actions">
       <div class="vgu-badge">{{ campus.short_name }}</div>
+      <a class="add-campus-link" href="{{ url_for('setup_page') }}">＋ Add another campus</a>
       {% if campus.owner_claimed %}
       <a class="setup-link" href="{{ url_for('campus_admin', slug=campus.slug) }}">Manage campus</a>
       {% else %}
-      <a class="setup-link" href="{{ url_for('campus_admin', slug=campus.slug) }}">Claim campus</a>
+      <a class="setup-link" href="{{ url_for('campus_admin', slug=campus.slug) }}">Claim this campus</a>
       {% endif %}
     </div>
   </div>
@@ -82,9 +83,9 @@
   <div class="hero">
     <div class="hero-aurora"></div>
 
-    <div class="hero-badge" id="hp-badge"><span class="badge-dot"></span>🎓 Smart Campus Guide</div>
+    <div class="hero-badge" id="hp-badge"><span class="badge-dot"></span>🎓 {{ campus.name }} · Smart Campus Guide</div>
 
-    <h1 class="hero-gradient-text" id="hp-title">Find Any Place<br>On Campus</h1>
+    <h1 class="hero-gradient-text" id="hp-title">Find Any Place<br>At {{ campus.short_name }}</h1>
 
     <p id="hp-para">Search for classrooms, offices, labs, canteen and more — get step-by-step directions instantly.</p>
 
@@ -178,6 +179,28 @@
     </div>
 
   </div>
+
+  <section class="campus-network-card glass" aria-label="Campus profiles">
+    <div class="campus-network-copy">
+      <span class="setup-kicker">CAMPUS NETWORK</span>
+      <h2>Explore a campus</h2>
+      <p>Each college has its own searchable map, admin space, and shareable URL.</p>
+    </div>
+    <div class="campus-network-list">
+      {% for item in campuses %}
+      <a class="campus-network-item {% if item.slug == campus.slug %}active{% endif %}" href="{{ url_for('campus_home', slug=item.slug) }}">
+        <span class="campus-network-icon">⌖</span>
+        <span><strong>{{ item.name }}</strong><small>{{ item.short_name }}</small></span>
+        {% if item.slug == campus.slug %}<em>Current</em>{% else %}<span class="campus-network-arrow">→</span>{% endif %}
+      </a>
+      {% endfor %}
+      <a class="campus-network-item add" href="{{ url_for('setup_page') }}">
+        <span class="campus-network-icon">＋</span>
+        <span><strong>Add another campus</strong><small>Create a new college profile</small></span>
+        <span class="campus-network-arrow">→</span>
+      </a>
+    </div>
+  </section>
 
   <div class="site-footer">© 2026 Aryan Kumar &nbsp;·&nbsp; Campus Navigator {{ campus.name }}</div>
 </div>

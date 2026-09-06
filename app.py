@@ -602,6 +602,7 @@ def home_for(slug):
         campus=campus,
         stats=campus_stats(db_id),
         featured_locations=featured_locations(db_id),
+        campuses=list_campuses(),
     )
 
 
