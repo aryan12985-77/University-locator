@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Occupancy — {{ campus.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    .occupancy-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; }
+    .occupancy-form { display:grid; gap:12px; }
+    .occupancy-form label { display:grid; gap:6px; font-weight:600; }
+    .occupancy-form input, .occupancy-form select { width:100%; padding:11px 12px; border:1px solid rgba(148,163,184,.35); border-radius:10px; background:rgba(15,23,42,.55); color:inherit; }
+    .occupancy-status { min-height:22px; margin-top:10px; }
+    .occupancy-result { display:grid; gap:8px; }
+    .occupancy-result strong { font-size:1.35rem; }
+    .occupancy-muted { color:#94a3b8; font-size:.88rem; }
+    .occupancy-record { display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid rgba(148,163,184,.18); }
+  </style>
+</head>
+<body class="setup-page">
+  <main class="setup-shell">
+    <header class="setup-header">
+      <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) }}">Campus Navigator</a>
+      <a class="btn-secondary" href="{{ url_for('campus_home', slug=campus.slug) }}">← Campus home</a>
+    </header>
+
+    <section class="setup-hero">
+      <span class="setup-kicker">COMMUNITY OCCUPANCY</span>
+      <h1>Check and share occupancy</h1>
+      <p>Search a place to see the latest community report, or submit what you see right now. Your validated report helps improve future occupancy models.</p>
+    </section>
+
+    <section class="occupancy-grid">
+      <article class="glass setup-card">
+        <div class="setup-section-title">Find a place</div>
+        <form id="lookupForm" class="occupancy-form">
+          <label>Campus place
+            <input id="placeSearch" list="placeOptions" placeholder="Search Library, Mess, Lab..." autocomplete="off" required>
+            <datalist id="placeOptions"></datalist>
+          </label>
+          <button class="btn-primary" type="submit">Check occupancy →</button>
+        </form>
+        <div id="lookupStatus" class="occupancy-status occupancy-muted"></div>
+        <div id="lookupResult" class="occupancy-result"></div>
+      </article>
+
+      <article class="glass setup-card">
+        <div class="setup-section-title">Report current occupancy</div>
+        <p class="occupancy-muted">Only submit what you observed. This is stored as a manual community observation, not as sensor or CCTV data.</p>
+        <form id="reportForm" class="occupancy-form">
+          <label>Place
+            <select id="reportPlace" required></select>
+          </label>
+          <label>Total capacity
+            <input id="capacity" type="number" min="1" required placeholder="Example: 200">
+          </label>
+          <label>People currently present
+            <input id="occupied" type="number" min="0" required placeholder="Example: 137">
+          </label>
+          <button class="btn-primary" type="submit">Submit live report →</button>
+        </form>
+        <div id="reportStatus" class="occupancy-status" role="status"></div>
+      </article>
+    </section>
+
+    <section class="glass setup-card">
+      <div class="setup-section-title">Help train the occupancy model</div>
+      <p class="occupancy-muted">The model learns only from stored observations. Reports are kept separate from synthetic development data and are never presented as predictions.</p>
+      <button id="trainButton" class="btn-secondary" type="button">Train from collected observations</button>
+      <div id="trainStatus" class="occupancy-status"></div>
+    </section>
+
+    <section class="glass setup-card">
+      <div class="setup-section-title">Recent reports</div>
+      <div id="recentReports" class="occupancy-muted">Choose a place to load reports.</div>
+    </section>
+  </main>
+
+  <script>
+    const campusSlug = {{ campus.slug | tojson }};
+    const locationsUrl = "/api/c/" + encodeURIComponent(campusSlug) + "/occupancy/locations";
+    const occupancyUrl = "/api/c/" + encodeURIComponent(campusSlug) + "/occupancy";
+    const currentUrl = "/api/c/" + encodeURIComponent(campusSlug) + "/occupancy/current";
+    const trainUrl = "/api/c/" + encodeURIComponent(campusSlug) + "/occupancy/train";
+    let locations = [];
+
+    function selectedLocation(value) {
+      return locations.find(item => String(item.id) === String(value)) ||
+        locations.find(item => item.name.toLowerCase() === value.trim().toLowerCase());
+    }
+    function showStatus(id, message, kind) {
+      const element = document.getElementById(id);
+      element.textContent = message;
+      element.className = "occupancy-status " + (kind || "occupancy-muted");
+    }
+    function renderResult(item) {
+      const result = document.getElementById("lookupResult");
+      if (!item) {
+        result.innerHTML = "<span class='occupancy-muted'>No report found for this place yet.</span>";
+        return;
+      }
+      result.innerHTML = "<strong>" + item.occupied_count + " / " + item.total_capacity + "</strong>" +
+        "<span>" + item.available_count + " available · " + item.occupancy_percentage + "% · " + item.status + "</span>" +
+        "<span class='occupancy-muted'>" + item.data_source + " · " + item.observed_at + "</span>";
+    }
+    function renderReports(items) {
+      const target = document.getElementById("recentReports");
+      if (!items.length) {
+        target.textContent = "No reports found for this place.";
+        return;
+      }
+      target.innerHTML = items.slice(0, 8).map(item =>
+        "<div class='occupancy-record'><span>" + item.occupied_count + " / " + item.total_capacity +
+        " (" + item.occupancy_percentage + "%)</span><span class='occupancy-muted'>" +
+        item.data_source + " · " + item.observed_at + "</span></div>"
+      ).join("");
+    }
+    async function loadLocations() {
+      const response = await fetch(locationsUrl);
+      if (!response.ok) throw new Error("Could not load campus places");
+      locations = await response.json();
+      document.getElementById("placeOptions").innerHTML = locations.map(item =>
+        "<option value='" + item.name.replace(/'/g, "&#39;") + "'>" + item.building + "</option>"
+      ).join("");
+      document.getElementById("reportPlace").innerHTML = locations.map(item =>
+        "<option value='" + item.id + "'>" + item.name + " · " + item.building + "</option>"
+      ).join("");
+    }
+    document.getElementById("lookupForm").onsubmit = async event => {
+      event.preventDefault();
+      const location = selectedLocation(document.getElementById("placeSearch").value);
+      if (!location) { showStatus("lookupStatus", "Select a place from the campus list.", "error"); return; }
+      try {
+        const response = await fetch(currentUrl + "?location_id=" + location.id);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load occupancy");
+        renderResult(data.observations[0]);
+        const history = await fetch(occupancyUrl + "?location_id=" + location.id + "&limit=20");
+        const historyData = await history.json();
+        renderReports(historyData.observations || []);
+        showStatus("lookupStatus", "Latest report for " + location.name, "success");
+      } catch (error) { showStatus("lookupStatus", error.message, "error"); }
+    };
+    document.getElementById("reportForm").onsubmit = async event => {
+      event.preventDefault();
+      const payload = {
+        location_id: document.getElementById("reportPlace").value,
+        capacity: document.getElementById("capacity").value,
+        occupied: document.getElementById("occupied").value
+      };
+      if (Number(payload.occupied) > Number(payload.capacity)) {
+        showStatus("reportStatus", "People present cannot exceed total capacity.", "error");
+        return;
+      }
+      try {
+        const response = await fetch(occupancyUrl, {
+          method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not submit report");
+        renderResult(data.observation);
+        showStatus("reportStatus", "Report saved. Thank you for helping improve the model.", "success");
+        document.getElementById("placeSearch").value =
+          locations.find(item => String(item.id) === String(payload.location_id)).name;
+      } catch (error) { showStatus("reportStatus", error.message, "error"); }
+    };
+    document.getElementById("trainButton").onclick = async () => {
+      showStatus("trainStatus", "Training from collected observations…", "working");
+      try {
+        const response = await fetch(trainUrl, {
+          method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || data.detail || "Training needs more observations");
+        showStatus("trainStatus", "Model trained from " + data.metadata.observation_count + " observations. Data: " + data.data_status + ".", "success");
+      } catch (error) { showStatus("trainStatus", error.message, "error"); }
+    };
+    loadLocations().catch(error => showStatus("lookupStatus", error.message, "error"));
+  </script>
+</body>
+</html>

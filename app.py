@@ -1801,6 +1801,12 @@ def campus_intelligence(slug):
     )
 
 
+@app.route("/c/<slug>/occupancy")
+def campus_occupancy_page(slug):
+    campus_context(slug)
+    return render_template("occupancy.html", campus=get_campus_config(slug))
+
+
 # ---------------- SYNC ROUTE ----------------
 @app.route("/sync")
 def sync():

@@ -71,6 +71,9 @@
     </a>
     <div class="campus-header-actions">
       <div class="vgu-badge">{{ campus.name }}</div>
+      <a href="{{ url_for('campus_occupancy_page', slug=campus.slug) }}" class="btn-secondary" style="padding:8px 14px;font-size:.75rem;border-radius:50px;">
+        📊 Occupancy
+      </a>
     </div>
   </div>
 
