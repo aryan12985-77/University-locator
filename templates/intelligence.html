@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Campus Intelligence — {{ campus.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="setup-page">
+  <main class="setup-shell">
+    <header class="setup-header">
+      <a class="logo" href="{{ url_for('campus_home', slug=campus.slug) }}">Campus Navigator</a>
+      <a class="btn-secondary" href="{{ url_for('campus_home', slug=campus.slug) }}">← Campus</a>
+    </header>
+    <section class="setup-hero">
+      <span class="setup-kicker">RESEARCH / INTELLIGENCE</span>
+      <h1>{{ campus.name }} occupancy</h1>
+      <p>Live observations and synthetic development data are shown separately from predictions.</p>
+    </section>
+    <section class="glass setup-card">
+      <div class="setup-section-title">Current occupancy</div>
+      {% if current %}
+      <div class="campus-list">
+        {% for item in current %}
+        <div class="campus-list-item">
+          <span><strong>{{ item.location_name }}</strong><small>{{ item.occupied_count }} / {{ item.total_capacity }} · {{ item.occupancy_percentage }}%</small></span>
+          <span>{{ item.status }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p>No occupancy observations have been collected yet.</p>
+      {% endif %}
+    </section>
+    <section class="glass setup-card">
+      <div class="setup-section-title">Dataset summary</div>
+      <p>{{ summary.total_observations }} observations</p>
+      <p>Average: {{ summary.average_occupancy if summary.average_occupancy is not none else "—" }}%</p>
+      <p>Range: {{ summary.minimum_occupancy if summary.minimum_occupancy is not none else "—" }}% – {{ summary.maximum_occupancy if summary.maximum_occupancy is not none else "—" }}%</p>
+      <p class="setup-note">Synthetic records are development data, not real sensor measurements.</p>
+    </section>
+  </main>
+</body>
+</html>

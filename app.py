@@ -11,10 +11,21 @@ import sqlite3
 import json
 import re
 import os
+from datetime import timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
+
+from occupancy import DemoOccupancySource, ManualOccupancySource
+from occupancy.base import parse_observed_at
+from occupancy.demo_source import facility_category
+from occupancy.status import occupancy_status
+from ml import InsufficientDataError, PredictionService
+from ml.registry import ModelRegistry
+from ml.storage import ensure_prediction_table, store_prediction
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "local-development-session-secret")
+prediction_services = {}
+prediction_metadata = {}
 
 DEFAULT_CAMPUS = {
     "id": "vgu-jaipur",
@@ -214,6 +225,36 @@ def ensure_schema():
             UNIQUE(campus_id, floor, name, building)
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS occupancy_observations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            campus_id INTEGER NOT NULL REFERENCES campuses(id) ON DELETE CASCADE,
+            location_id INTEGER NOT NULL REFERENCES locations(id) ON DELETE CASCADE,
+            observed_at TEXT NOT NULL,
+            observation_date TEXT NOT NULL,
+            day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+            hour INTEGER NOT NULL CHECK (hour BETWEEN 0 AND 23),
+            minute INTEGER NOT NULL CHECK (minute BETWEEN 0 AND 59),
+            time_slot TEXT NOT NULL,
+            total_capacity INTEGER NOT NULL CHECK (total_capacity > 0),
+            occupied_count INTEGER NOT NULL CHECK (
+                occupied_count BETWEEN 0 AND total_capacity
+            ),
+            available_count INTEGER NOT NULL CHECK (
+                available_count = total_capacity - occupied_count
+            ),
+            occupancy_percentage REAL NOT NULL CHECK (
+                occupancy_percentage BETWEEN 0 AND 100
+            ),
+            data_source TEXT NOT NULL,
+            confidence REAL CHECK (confidence IS NULL OR confidence BETWEEN 0 AND 1),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_occupancy_location_time
+        ON occupancy_observations(campus_id, location_id, observed_at DESC)
+    """)
     location_columns = {
         row[1] for row in conn.execute("PRAGMA table_info(locations)").fetchall()
     }
@@ -330,6 +371,177 @@ def campus_stats(campus_id=None):
     """, (campus_id, campus_id)).fetchone()[0]
     conn.close()
     return {"locations": locations, "buildings": buildings}
+
+
+def occupancy_location(campus_id, location_id):
+    conn = get_db_connection()
+    row = conn.execute(
+        """
+        SELECT id, name, building, floor
+        FROM locations
+        WHERE id = ? AND campus_id = ?
+        """,
+        (location_id, campus_id),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def insert_occupancy_observation(observation):
+    record = observation.as_record()
+    conn = sqlite3.connect("campus.db")
+    try:
+        cursor = conn.execute(
+            """
+            INSERT INTO occupancy_observations (
+                campus_id, location_id, observed_at, observation_date,
+                day_of_week, hour, minute, time_slot, total_capacity,
+                occupied_count, available_count, occupancy_percentage,
+                data_source, confidence
+            ) VALUES (
+                :campus_id, :location_id, :observed_at, :observation_date,
+                :day_of_week, :hour, :minute, :time_slot, :total_capacity,
+                :occupied_count, :available_count, :occupancy_percentage,
+                :data_source, :confidence
+            )
+            """,
+            record,
+        )
+        conn.commit()
+        return cursor.lastrowid, record
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def insert_occupancy_records(records):
+    conn = sqlite3.connect("campus.db")
+    try:
+        cursor = conn.executemany(
+            """
+            INSERT INTO occupancy_observations (
+                campus_id, location_id, observed_at, observation_date,
+                day_of_week, hour, minute, time_slot, total_capacity,
+                occupied_count, available_count, occupancy_percentage,
+                data_source, confidence
+            ) VALUES (
+                :campus_id, :location_id, :observed_at, :observation_date,
+                :day_of_week, :hour, :minute, :time_slot, :total_capacity,
+                :occupied_count, :available_count, :occupancy_percentage,
+                :data_source, :confidence
+            )
+            """,
+            records,
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+    return records
+
+
+def occupancy_record(row):
+    record = dict(row)
+    record["location_id"] = int(record["location_id"])
+    record["status"] = occupancy_status(record["occupancy_percentage"])
+    return record
+
+
+def occupancy_rows(
+    campus_id,
+    location_id=None,
+    limit=100,
+    start_at=None,
+    end_at=None,
+):
+    conn = get_db_connection()
+    rows = conn.execute(
+        """
+        SELECT id, campus_id, location_id, observed_at, observation_date,
+               day_of_week, hour, minute, time_slot, total_capacity,
+               occupied_count, available_count, occupancy_percentage,
+               data_source, confidence, created_at
+        FROM occupancy_observations
+        WHERE campus_id = ?
+          AND (? IS NULL OR location_id = ?)
+          AND (? IS NULL OR observed_at >= ?)
+          AND (? IS NULL OR observed_at <= ?)
+        ORDER BY observed_at DESC, id DESC
+        LIMIT ?
+        """,
+        (
+            campus_id,
+            location_id,
+            location_id,
+            start_at,
+            start_at,
+            end_at,
+            end_at,
+            limit,
+        ),
+    ).fetchall()
+    conn.close()
+    return [occupancy_record(row) for row in rows]
+
+
+def occupancy_facilities(campus_id, location_ids=None):
+    conn = get_db_connection()
+    rows = conn.execute(
+        """
+        SELECT id, name, building, type
+        FROM locations
+        WHERE campus_id = ?
+        ORDER BY id
+        """,
+        (campus_id,),
+    ).fetchall()
+    conn.close()
+    selected = set(location_ids) if location_ids else None
+    facilities = []
+    for row in rows:
+        if selected is not None and row["id"] not in selected:
+            continue
+        category = facility_category(row["name"], row["building"], row["type"])
+        facilities.append({
+            "id": row["id"],
+            "name": row["name"],
+            "building": row["building"],
+            "category": category,
+        })
+    return facilities
+
+
+def occupancy_capacity(value, category):
+    if value is not None:
+        try:
+            capacity = int(value)
+        except (TypeError, ValueError) as error:
+            raise ValueError("capacity must be an integer") from error
+        if capacity <= 0:
+            raise ValueError("capacity must be greater than zero")
+        return capacity
+    return {
+        "library": 200,
+        "reading_room": 100,
+        "lab": 60,
+        "classroom": 80,
+        "canteen": 250,
+        "sports": 120,
+        "default": 100,
+    }[category]
+
+
+def parse_range(value, field):
+    if value is None:
+        return None
+    try:
+        return parse_observed_at(value).isoformat(timespec="minutes")
+    except ValueError as error:
+        raise ValueError(f"{field} must be an ISO-8601 timestamp") from error
 
 
 def featured_locations(campus_id=None):
@@ -963,6 +1175,630 @@ def all_locations():
     ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+
+# ---------------- OCCUPANCY API ----------------
+def occupancy_api_location_id(payload):
+    try:
+        return int(payload.get("location_id"))
+    except (TypeError, ValueError) as error:
+        raise ValueError("location_id must be an integer") from error
+
+
+def occupancy_response(observation_id, record):
+    record = dict(record)
+    record["status"] = occupancy_status(record["occupancy_percentage"])
+    return {
+        "observation": {
+            "id": observation_id,
+            **record,
+        },
+        "data_status": (
+            "synthetic development data"
+            if record["data_source"] == "DEMO_SYNTHETIC"
+            else "observed data"
+        ),
+    }
+
+
+@app.route("/api/c/<slug>/occupancy/locations")
+def occupancy_locations(slug):
+    _, campus_db_id = campus_context(slug)
+    conn = get_db_connection()
+    rows = conn.execute(
+        """
+        SELECT id, name, building, floor
+        FROM locations
+        WHERE campus_id = ?
+        ORDER BY name COLLATE NOCASE, building COLLATE NOCASE
+        """,
+        (campus_db_id,),
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(row) for row in rows])
+
+
+@app.route("/api/c/<slug>/occupancy", methods=["GET", "POST"])
+def campus_occupancy(slug):
+    _, campus_db_id = campus_context(slug)
+    if request.method == "GET":
+        location_id = request.args.get("location_id")
+        if location_id is not None:
+            try:
+                location_id = int(location_id)
+            except ValueError as error:
+                return jsonify({"error": "location_id must be an integer"}), 400
+            if not occupancy_location(campus_db_id, location_id):
+                return jsonify({"error": "Location not found for this campus"}), 404
+        try:
+            limit = max(1, min(int(request.args.get("limit", 100)), 500))
+            start_at = parse_range(request.args.get("start"), "start")
+            end_at = parse_range(request.args.get("end"), "end")
+            if start_at and end_at and start_at > end_at:
+                raise ValueError("start must be before or equal to end")
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        return jsonify({
+            "data_status": "observed and synthetic records are labeled by data_source",
+            "observations": occupancy_rows(
+                campus_db_id, location_id, limit, start_at, end_at
+            ),
+        })
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        location_id = occupancy_api_location_id(payload)
+        if not occupancy_location(campus_db_id, location_id):
+            return jsonify({"error": "Location not found for this campus"}), 404
+        source = ManualOccupancySource()
+        observation = source.observe(
+            campus_db_id,
+            location_id,
+            payload.get("capacity"),
+            payload.get("occupied"),
+            confidence=payload.get("confidence"),
+            observed_at=payload.get("observed_at"),
+        )
+        observation_id, record = insert_occupancy_observation(observation)
+    except (ValueError, sqlite3.IntegrityError) as error:
+        return jsonify({"error": str(error)}), 400
+    return jsonify(occupancy_response(observation_id, record)), 201
+
+
+@app.route("/api/c/<slug>/occupancy/demo/generate", methods=["POST"])
+def generate_demo_occupancy(slug):
+    _, campus_db_id = campus_context(slug)
+    payload = request.get_json(silent=True) or {}
+    try:
+        days = int(payload.get("days", 7))
+        if days < 1 or days > 180:
+            raise ValueError("days must be between 1 and 180")
+        interval_minutes = int(payload.get("interval_minutes", 60))
+        if interval_minutes < 5 or interval_minutes > 1440:
+            raise ValueError("interval_minutes must be between 5 and 1440")
+        end_at = parse_observed_at(payload.get("end_at"))
+        start_at = parse_observed_at(
+            payload.get("start_at")
+        ) if payload.get("start_at") else end_at - timedelta(days=days)
+        if start_at >= end_at:
+            raise ValueError("start_at must be before end_at")
+        location_ids = payload.get("location_ids")
+        if location_ids is not None:
+            try:
+                location_ids = [int(value) for value in location_ids]
+            except (TypeError, ValueError) as error:
+                raise ValueError("location_ids must be an array of integers") from error
+        facilities = occupancy_facilities(campus_db_id, location_ids)
+        if not facilities:
+            raise ValueError("No locations found for this campus")
+        capacities = payload.get("capacities") or {}
+        for facility in facilities:
+            facility["capacity"] = occupancy_capacity(
+                capacities.get(str(facility["id"]), capacities.get(facility["id"])),
+                facility["category"],
+            )
+        slots = int((end_at - start_at).total_seconds() // (interval_minutes * 60)) + 1
+        expected_records = slots * len(facilities)
+        if expected_records > 100000:
+            raise ValueError(
+                "Requested dataset is too large; reduce days, interval, or locations"
+            )
+        source = DemoOccupancySource(seed=payload.get("seed"))
+        records = [
+            observation.as_record()
+            for observation in source.generate(
+                campus_db_id,
+                facilities,
+                start_at,
+                end_at,
+                interval_minutes,
+            )
+        ]
+        insert_occupancy_records(records)
+        inserted = len(records)
+    except (ValueError, sqlite3.IntegrityError) as error:
+        return jsonify({"error": str(error)}), 400
+    return jsonify({
+        "data_status": "synthetic development data",
+        "generated": inserted,
+        "start_at": start_at.isoformat(timespec="minutes"),
+        "end_at": end_at.isoformat(timespec="minutes"),
+        "interval_minutes": interval_minutes,
+        "locations": len(facilities),
+    }), 201
+
+
+@app.route("/api/c/<slug>/occupancy/demo", methods=["POST"])
+def campus_demo_occupancy(slug):
+    _, campus_db_id = campus_context(slug)
+    payload = request.get_json(silent=True) or {}
+    try:
+        location_id = occupancy_api_location_id(payload)
+        if not occupancy_location(campus_db_id, location_id):
+            return jsonify({"error": "Location not found for this campus"}), 404
+        source = DemoOccupancySource()
+        observation = source.observe(
+            campus_db_id,
+            location_id,
+            payload.get("capacity"),
+            occupied=payload.get("occupied"),
+            observed_at=payload.get("observed_at"),
+        )
+        observation_id, record = insert_occupancy_observation(observation)
+    except (ValueError, sqlite3.IntegrityError) as error:
+        return jsonify({"error": str(error)}), 400
+    return jsonify(occupancy_response(observation_id, record)), 201
+
+
+@app.route("/api/c/<slug>/occupancy/current")
+def campus_current_occupancy(slug):
+    _, campus_db_id = campus_context(slug)
+    location_id = request.args.get("location_id")
+    if location_id is not None:
+        try:
+            location_id = int(location_id)
+        except ValueError as error:
+            return jsonify({"error": "location_id must be an integer"}), 400
+        if not occupancy_location(campus_db_id, location_id):
+            return jsonify({"error": "Location not found for this campus"}), 404
+
+    records = occupancy_rows(campus_db_id, location_id, 500)
+    latest = {}
+    for record in records:
+        latest.setdefault(record["location_id"], record)
+    return jsonify({
+        "data_status": "latest available observations; not predictions",
+        "observations": list(latest.values()),
+    })
+
+
+@app.route("/api/c/<slug>/occupancy/summary")
+def campus_occupancy_summary(slug):
+    _, campus_db_id = campus_context(slug)
+    try:
+        start_at = parse_range(request.args.get("start"), "start")
+        end_at = parse_range(request.args.get("end"), "end")
+        if start_at and end_at and start_at > end_at:
+            raise ValueError("start must be before or equal to end")
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+
+    conn = get_db_connection()
+    filters = ["campus_id = ?"]
+    args = [campus_db_id]
+    if start_at:
+        filters.append("observed_at >= ?")
+        args.append(start_at)
+    if end_at:
+        filters.append("observed_at <= ?")
+        args.append(end_at)
+    where = " AND ".join(filters)
+    overall = conn.execute(
+        f"""
+        SELECT COUNT(*) AS total_observations,
+               MIN(observed_at) AS earliest_observation,
+               MAX(observed_at) AS latest_observation,
+               AVG(occupancy_percentage) AS average_occupancy,
+               MAX(occupancy_percentage) AS maximum_occupancy,
+               MIN(occupancy_percentage) AS minimum_occupancy
+        FROM occupancy_observations
+        WHERE {where}
+        """,
+        args,
+    ).fetchone()
+    by_facility = conn.execute(
+        f"""
+        SELECT o.location_id, l.name, l.building,
+               COUNT(*) AS observations,
+               AVG(o.occupancy_percentage) AS average_occupancy,
+               MAX(o.occupancy_percentage) AS maximum_occupancy,
+               MIN(o.occupancy_percentage) AS minimum_occupancy
+        FROM occupancy_observations AS o
+        JOIN locations AS l ON l.id = o.location_id AND l.campus_id = o.campus_id
+        WHERE {where}
+        GROUP BY o.location_id, l.name, l.building
+        ORDER BY l.name COLLATE NOCASE
+        """,
+        args,
+    ).fetchall()
+    conn.close()
+    result = dict(overall)
+    for key in (
+        "average_occupancy",
+        "maximum_occupancy",
+        "minimum_occupancy",
+    ):
+        if result[key] is not None:
+            result[key] = round(result[key], 2)
+    result["total_observations"] = result["total_observations"] or 0
+    result["by_campus"] = [{
+        "campus_id": campus_db_id,
+        "observations": result["total_observations"],
+    }]
+    result["by_facility"] = []
+    for row in by_facility:
+        item = dict(row)
+        for key in ("average_occupancy", "maximum_occupancy", "minimum_occupancy"):
+            item[key] = round(item[key], 2)
+        result["by_facility"].append(item)
+    return jsonify(result)
+
+
+@app.route("/api/occupancy/summary")
+def occupancy_summary():
+    campus_slug = request.args.get("campus")
+    campus_id = None
+    if campus_slug:
+        campus_id = campus_id_for(campus_slug)
+        if campus_id is None:
+            return jsonify({"error": "Campus not found"}), 404
+    try:
+        start_at = parse_range(request.args.get("start"), "start")
+        end_at = parse_range(request.args.get("end"), "end")
+        if start_at and end_at and start_at > end_at:
+            raise ValueError("start must be before or equal to end")
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+
+    filters = ["1 = 1"]
+    args = []
+    if campus_id is not None:
+        filters.append("o.campus_id = ?")
+        args.append(campus_id)
+    if start_at:
+        filters.append("o.observed_at >= ?")
+        args.append(start_at)
+    if end_at:
+        filters.append("o.observed_at <= ?")
+        args.append(end_at)
+    where = " AND ".join(filters)
+    conn = get_db_connection()
+    overall = conn.execute(
+        f"""
+        SELECT COUNT(*) AS total_observations,
+               MIN(o.observed_at) AS earliest_observation,
+               MAX(o.observed_at) AS latest_observation,
+               AVG(o.occupancy_percentage) AS average_occupancy,
+               MAX(o.occupancy_percentage) AS maximum_occupancy,
+               MIN(o.occupancy_percentage) AS minimum_occupancy
+        FROM occupancy_observations AS o
+        WHERE {where}
+        """,
+        args,
+    ).fetchone()
+    campus_rows = conn.execute(
+        f"""
+        SELECT o.campus_id, c.slug, c.name, COUNT(*) AS observations
+        FROM occupancy_observations AS o
+        JOIN campuses AS c ON c.id = o.campus_id
+        WHERE {where}
+        GROUP BY o.campus_id, c.slug, c.name
+        ORDER BY c.name COLLATE NOCASE
+        """,
+        args,
+    ).fetchall()
+    facility_rows = conn.execute(
+        f"""
+        SELECT o.campus_id, o.location_id, l.name, l.building,
+               COUNT(*) AS observations,
+               AVG(o.occupancy_percentage) AS average_occupancy,
+               MAX(o.occupancy_percentage) AS maximum_occupancy,
+               MIN(o.occupancy_percentage) AS minimum_occupancy
+        FROM occupancy_observations AS o
+        JOIN locations AS l ON l.id = o.location_id AND l.campus_id = o.campus_id
+        WHERE {where}
+        GROUP BY o.campus_id, o.location_id, l.name, l.building
+        ORDER BY l.name COLLATE NOCASE
+        """,
+        args,
+    ).fetchall()
+    conn.close()
+
+    result = dict(overall)
+    result["total_observations"] = result["total_observations"] or 0
+    for key in ("average_occupancy", "maximum_occupancy", "minimum_occupancy"):
+        if result[key] is not None:
+            result[key] = round(result[key], 2)
+    result["by_campus"] = [dict(row) for row in campus_rows]
+    result["by_facility"] = []
+    for row in facility_rows:
+        item = dict(row)
+        for key in ("average_occupancy", "maximum_occupancy", "minimum_occupancy"):
+            item[key] = round(item[key], 2)
+        result["by_facility"].append(item)
+    return jsonify(result)
+
+
+# ---------------- OCCUPANCY ML API ----------------
+def prediction_service_for(campus_id):
+    service = prediction_services.get(campus_id)
+    if service is None:
+        service = PredictionService(
+            registry=ModelRegistry("models"),
+            minimum_observations=10,
+        )
+        prediction_services[campus_id] = service
+    return service
+
+
+def prediction_location(campus_id, location_id):
+    conn = get_db_connection()
+    row = conn.execute(
+        """
+        SELECT l.id, l.name, l.building, l.type,
+               o.total_capacity
+        FROM locations AS l
+        LEFT JOIN occupancy_observations AS o
+          ON o.location_id = l.id AND o.campus_id = l.campus_id
+        WHERE l.id = ? AND l.campus_id = ?
+        ORDER BY o.observed_at DESC
+        LIMIT 1
+        """,
+        (location_id, campus_id),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def prediction_input(campus_id, location_id, timestamp, capacity):
+    return {
+        "campus_id": campus_id,
+        "location_id": location_id,
+        "observed_at": timestamp.isoformat(timespec="minutes"),
+        "total_capacity": capacity,
+    }
+
+
+@app.route("/api/c/<slug>/occupancy/train", methods=["POST"])
+def train_occupancy_model(slug):
+    _, campus_db_id = campus_context(slug)
+    payload = request.get_json(silent=True) or {}
+    location_id = payload.get("location_id")
+    try:
+        location_id = int(location_id) if location_id is not None else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "location_id must be an integer"}), 400
+    if location_id is not None and not occupancy_location(campus_db_id, location_id):
+        return jsonify({"error": "Location not found for this campus"}), 404
+    service = prediction_service_for(campus_db_id)
+    observations = service.load_observations(
+        "campus.db", campus_db_id, location_id
+    )
+    try:
+        metadata = service.train(observations)
+    except InsufficientDataError as error:
+        return jsonify({
+            "error": "Insufficient historical data for reliable model evaluation.",
+            "detail": str(error),
+            "observations": len(observations),
+        }), 400
+    prediction_metadata[campus_db_id] = metadata
+    return jsonify({
+        "status": "trained",
+        "data_status": (
+            "synthetic development data"
+            if any(row["data_source"] == "DEMO_SYNTHETIC" for row in observations)
+            else "observed data"
+        ),
+        "metadata": metadata,
+    }), 201
+
+
+@app.route("/api/c/<slug>/occupancy/retrain", methods=["POST"])
+def retrain_occupancy_model(slug):
+    _, campus_db_id = campus_context(slug)
+    payload = request.get_json(silent=True) or {}
+    try:
+        threshold = int(payload.get("minimum_new_observations", 10))
+    except (TypeError, ValueError):
+        return jsonify({"error": "minimum_new_observations must be an integer"}), 400
+    service = prediction_service_for(campus_db_id)
+    observations = service.load_observations("campus.db", campus_db_id)
+    if len(observations) < threshold:
+        return jsonify({
+            "error": "Retraining threshold has not been reached.",
+            "observations": len(observations),
+            "threshold": threshold,
+        }), 400
+    candidate = PredictionService(
+        registry=ModelRegistry("models"),
+        minimum_observations=service.minimum_observations,
+    )
+    try:
+        metadata = candidate.train(observations)
+    except InsufficientDataError as error:
+        return jsonify({
+            "error": "Insufficient historical data for reliable model evaluation.",
+            "detail": str(error),
+        }), 400
+    previous = prediction_metadata.get(campus_db_id)
+    previous_mae = (
+        previous.get("test_metrics", {}).get("mae") if previous else None
+    )
+    candidate_mae = metadata.get("test_metrics", {}).get("mae")
+    if previous_mae is not None and candidate_mae >= previous_mae:
+        return jsonify({
+            "status": "kept_previous_model",
+            "candidate_metrics": metadata.get("test_metrics"),
+            "previous_metrics": previous.get("test_metrics"),
+        })
+    prediction_services[campus_db_id] = candidate
+    prediction_metadata[campus_db_id] = metadata
+    return jsonify({"status": "promoted", "metadata": metadata}), 201
+
+
+@app.route("/api/c/<slug>/occupancy/predict")
+def predict_occupancy(slug):
+    _, campus_db_id = campus_context(slug)
+    try:
+        location_id = int(request.args["location_id"])
+        timestamp = parse_observed_at(request.args["at"])
+    except (KeyError, TypeError, ValueError) as error:
+        return jsonify({
+            "error": "location_id and at (ISO-8601 timestamp) are required"
+        }), 400
+    location = prediction_location(campus_db_id, location_id)
+    if not location:
+        return jsonify({"error": "Location not found for this campus"}), 404
+    if location["total_capacity"] is None:
+        return jsonify({"error": "Train a model after recording capacity"}), 400
+    service = prediction_services.get(campus_db_id)
+    if service is None or service.model is None:
+        return jsonify({
+            "error": "No trained model is available for this campus"
+        }), 400
+    row = prediction_input(
+        campus_db_id, location_id, timestamp, location["total_capacity"]
+    )
+    percentage = service.predict_one(row)
+    occupied = round(location["total_capacity"] * percentage / 100)
+    prediction_record = {
+        **row,
+        "predicted_percentage": round(percentage, 2),
+    }
+    prediction_connection = sqlite3.connect("campus.db")
+    try:
+        store_prediction(
+            prediction_connection,
+            service.model_name,
+            prediction_record,
+        )
+    finally:
+        prediction_connection.close()
+    return jsonify({
+        "data_status": "predicted from historical observations",
+        "prediction": {
+            "campus_id": campus_db_id,
+            "location_id": location_id,
+            "location_name": location["name"],
+            "predicted_for": row["observed_at"],
+            "predicted_occupancy": occupied,
+            "predicted_occupancy_percentage": round(percentage, 2),
+            "estimated_available": location["total_capacity"] - occupied,
+            "capacity": location["total_capacity"],
+            "status": occupancy_status(percentage),
+            "model": service.model_name,
+            "model_metadata": prediction_metadata.get(campus_db_id),
+        },
+    })
+
+
+@app.route("/api/c/<slug>/occupancy/best-times")
+def occupancy_best_times(slug):
+    _, campus_db_id = campus_context(slug)
+    try:
+        location_id = int(request.args["location_id"])
+        start_at = parse_observed_at(request.args["start"])
+        end_at = parse_observed_at(request.args["end"])
+        interval = int(request.args.get("interval_minutes", 60))
+        if end_at <= start_at or interval <= 0:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        return jsonify({
+            "error": "location_id, start, end, and a positive interval are required"
+        }), 400
+    location = prediction_location(campus_db_id, location_id)
+    service = prediction_services.get(campus_db_id)
+    if not location:
+        return jsonify({"error": "Location not found for this campus"}), 404
+    if service is None or service.model is None:
+        return jsonify({
+            "error": "Insufficient historical data for a recommendation"
+        }), 400
+    results = []
+    cursor = start_at
+    while cursor <= end_at:
+        row = prediction_input(
+            campus_db_id, location_id, cursor, location["total_capacity"]
+        )
+        percentage = service.predict_one(row)
+        results.append({
+            "at": row["observed_at"],
+            "predicted_occupancy_percentage": round(percentage, 2),
+            "estimated_available": round(
+                location["total_capacity"] * (1 - percentage / 100)
+            ),
+        })
+        cursor += timedelta(minutes=interval)
+    results.sort(key=lambda item: item["predicted_occupancy_percentage"])
+    return jsonify({
+        "data_status": "predicted from historical observations",
+        "recommendations": results[:3],
+        "model": service.model_name,
+    })
+
+
+@app.route("/c/<slug>/intelligence")
+def campus_intelligence(slug):
+    campus, campus_db_id = campus_context(slug)
+    conn = get_db_connection()
+    rows = conn.execute(
+        """
+        SELECT o.location_id, l.name AS location_name,
+               o.total_capacity, o.occupied_count, o.available_count,
+               o.occupancy_percentage, o.data_source
+        FROM occupancy_observations AS o
+        JOIN locations AS l ON l.id = o.location_id AND l.campus_id = o.campus_id
+        WHERE o.campus_id = ?
+          AND o.id = (
+            SELECT latest.id
+            FROM occupancy_observations AS latest
+            WHERE latest.campus_id = o.campus_id
+              AND latest.location_id = o.location_id
+            ORDER BY latest.observed_at DESC, latest.id DESC
+            LIMIT 1
+          )
+        ORDER BY l.name COLLATE NOCASE
+        """,
+        (campus_db_id,),
+    ).fetchall()
+    current = []
+    for row in rows:
+        item = dict(row)
+        item["status"] = occupancy_status(item["occupancy_percentage"])
+        current.append(item)
+    conn.close()
+    summary = {
+        "total_observations": 0,
+        "average_occupancy": None,
+        "minimum_occupancy": None,
+        "maximum_occupancy": None,
+    }
+    summary_rows = occupancy_rows(campus_db_id, limit=500)
+    if summary_rows:
+        percentages = [item["occupancy_percentage"] for item in summary_rows]
+        summary.update({
+            "total_observations": len(summary_rows),
+            "average_occupancy": round(sum(percentages) / len(percentages), 2),
+            "minimum_occupancy": min(percentages),
+            "maximum_occupancy": max(percentages),
+        })
+    return render_template(
+        "intelligence.html",
+        campus=campus,
+        current=current,
+        summary=summary,
+    )
 
 
 # ---------------- SYNC ROUTE ----------------

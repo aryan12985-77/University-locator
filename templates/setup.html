@@ -87,7 +87,7 @@
         <div class="setup-table-wrap">
           <table class="setup-table">
             <thead><tr>
-              <th>Place</th><th>Building</th><th>Floor</th><th>Latitude</th><th>Longitude</th>
+              <th>Place</th><th>Building</th><th>Floor</th><th>Latitude</th><th>Longitude</th><th>Image URL</th>
               <th>Type</th><th>Keywords</th><th>Instructions</th><th></th>
             </tr></thead>
             <tbody id="placesBody"></tbody>
@@ -149,6 +149,7 @@
     <td><input class="place-floor" placeholder="Ground"></td>
     <td><input class="place-lat" required type="number" step="any" placeholder="26.8123"></td>
     <td><input class="place-lng" required type="number" step="any" placeholder="75.8935"></td>
+    <td><input class="place-image" type="url" placeholder="https://.../library.jpg"></td>
     <td><input class="place-type" placeholder="academic"></td>
     <td><input class="place-keywords" placeholder="books, reading"></td>
     <td><input class="place-instructions" placeholder="Enter through main entrance"></td>
@@ -192,6 +193,7 @@
       row.querySelector(".place-floor").value = place.floor || "Ground";
       row.querySelector(".place-lat").value = place.lat ?? "";
       row.querySelector(".place-lng").value = place.lng ?? "";
+      row.querySelector(".place-image").value = place.image || "";
       row.querySelector(".place-type").value = place.type || "general";
       row.querySelector(".place-keywords").value = place.keywords || "";
       row.querySelector(".place-instructions").value = place.instructions || "";
@@ -240,6 +242,7 @@
         building: row.querySelector(".place-building").value.trim(),
         floor: row.querySelector(".place-floor").value.trim() || "Ground",
         lat: row.querySelector(".place-lat").value, lng: row.querySelector(".place-lng").value,
+        image: row.querySelector(".place-image").value.trim(),
         type: row.querySelector(".place-type").value.trim() || "general",
         keywords: row.querySelector(".place-keywords").value.trim(),
         instructions: row.querySelector(".place-instructions").value.trim()
