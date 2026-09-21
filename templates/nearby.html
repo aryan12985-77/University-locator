@@ -42,21 +42,23 @@
   <!-- HERO ROW -->
   <div class="nearby-hero">
     <div>
-      <h2 class="nearby-title">📍 Near Me</h2>
+      <h2 class="nearby-title"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg> Near Me</h2>
       <div class="nearby-sub" id="gpsStatus">Detecting your location...</div>
     </div>
-    <button class="refresh-btn" onclick="refreshLocation()" title="Refresh location">🔄</button>
+    <button class="refresh-btn" onclick="refreshLocation()" title="Refresh location">
+      <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5.3"></path><path d="M20 4v7h-7"></path></svg>
+    </button>
   </div>
 
   <!-- CATEGORY FILTERS -->
   <div class="nearby-filters" id="filterRow">
-    <button class="filter-chip active" data-cat="all"    onclick="setFilter('all')">All</button>
-    <button class="filter-chip" data-cat="academic" onclick="setFilter('academic')">🏫 Academic</button>
-    <button class="filter-chip" data-cat="sports"   onclick="setFilter('sports')">⚽ Sports</button>
-    <button class="filter-chip" data-cat="food"     onclick="setFilter('food')">🍽 Food</button>
-    <button class="filter-chip" data-cat="hostel"   onclick="setFilter('hostel')">🏠 Hostel</button>
-    <button class="filter-chip" data-cat="gates"    onclick="setFilter('gates')">🚪 Gates</button>
-    <button class="filter-chip" data-cat="other"    onclick="setFilter('other')">📌 Other</button>
+    <button class="filter-chip active" data-cat="all"    onclick="setFilter('all')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16"></path><path d="M12 4v16"></path></svg> All</button>
+    <button class="filter-chip" data-cat="academic" onclick="setFilter('academic')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l8-5 8 5-8 5-8-5z"></path><path d="M6 10.5V15c0 1.6 2.7 3 6 3s6-1.4 6-3v-4.5"></path></svg> Academic</button>
+    <button class="filter-chip" data-cat="sports"   onclick="setFilter('sports')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M8 8l8 8M8 16l8-8"></path></svg> Sports</button>
+    <button class="filter-chip" data-cat="food"     onclick="setFilter('food')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v7"></path><path d="M10 3v7"></path><path d="M14 3v7"></path><path d="M18 3v7"></path><path d="M4 11h16l-1 9H5l-1-9z"></path></svg> Food</button>
+    <button class="filter-chip" data-cat="hostel"   onclick="setFilter('hostel')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V8.5A1.5 1.5 0 0 1 5.5 7H10v13"></path><path d="M10 20V4h8.5A1.5 1.5 0 0 1 20 5.5V20"></path><path d="M8 11h2M14 11h2"></path></svg> Hostel</button>
+    <button class="filter-chip" data-cat="gates"    onclick="setFilter('gates')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V8l8-4 8 4v12"></path><path d="M8 20v-7h8v7"></path><path d="M12 11v9"></path></svg> Gates</button>
+    <button class="filter-chip" data-cat="other"    onclick="setFilter('other')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6"></path><path d="M12 16v6"></path><path d="M4 12h6"></path><path d="M14 12h6"></path><circle cx="12" cy="12" r="3"></circle></svg> Other</button>
   </div>
 
   <!-- GPS LOADING STATE -->
@@ -68,10 +70,13 @@
 
   <!-- GPS ERROR STATE -->
   <div class="nearby-error" id="nearbyError" style="display:none">
-    <div style="font-size:2.5rem;margin-bottom:12px">📵</div>
+    <div style="font-size:2.5rem;margin-bottom:12px;display:flex;align-items:center;justify-content:center;"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true" style="width:2.5rem;height:2.5rem;"><path d="M7 7l10 10"></path><path d="M5 10.5a7 7 0 0 1 14 0"></path><path d="M8 14a4 4 0 0 1 8 0"></path><path d="M12 17h.01"></path></svg></div>
     <h3>Location Access Needed</h3>
     <p>Allow location permission to see places near you.</p>
-    <button class="btn-primary" onclick="refreshLocation()" style="margin-top:16px">Try Again</button>
+    <button class="btn-primary" onclick="refreshLocation()" style="margin-top:16px; display:inline-flex; align-items:center; gap:8px;">
+      <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5.3"></path><path d="M20 4v7h-7"></path></svg>
+      Try Again
+    </button>
   </div>
 
   <!-- RESULTS LIST -->
@@ -79,7 +84,7 @@
 
   <!-- EMPTY STATE -->
   <div class="nearby-empty" id="nearbyEmpty" style="display:none">
-    <div style="font-size:2.5rem;margin-bottom:12px">🔍</div>
+    <div style="font-size:2.5rem;margin-bottom:12px;display:flex;align-items:center;justify-content:center;"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true" style="width:2.5rem;height:2.5rem;"><circle cx="11" cy="11" r="6"></circle><path d="M16 16L21 21"></path></svg></div>
     <h3>Nothing nearby</h3>
     <p>No locations found in this category.</p>
   </div>
@@ -105,7 +110,14 @@ function getCategory(loc) {
 
 /* ── Category icon ─────────────────────────────── */
 function catIcon(cat) {
-  return { academic:'🏫', sports:'⚽', food:'🍽', hostel:'🏠', gates:'🚪', other:'📌' }[cat] || '📍';
+  return {
+    academic: '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l8-5 8 5-8 5-8-5z"></path><path d="M6 10.5V15c0 1.6 2.7 3 6 3s6-1.4 6-3v-4.5"></path></svg>',
+    sports: '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M8 8l8 8M8 16l8-8"></path></svg>',
+    food: '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v7"></path><path d="M10 3v7"></path><path d="M14 3v7"></path><path d="M18 3v7"></path><path d="M4 11h16l-1 9H5l-1-9z"></path></svg>',
+    hostel: '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V8.5A1.5 1.5 0 0 1 5.5 7H10v13"></path><path d="M10 20V4h8.5A1.5 1.5 0 0 1 20 5.5V20"></path><path d="M8 11h2M14 11h2"></path></svg>',
+    gates: '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V8l8-4 8 4v12"></path><path d="M8 20v-7h8v7"></path><path d="M12 11v9"></path></svg>',
+    other: '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6"></path><path d="M12 16v6"></path><path d="M4 12h6"></path><path d="M14 12h6"></path><circle cx="12" cy="12" r="3"></circle></svg>'
+  }[cat] || '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>';
 }
 
 /* ── Haversine distance (metres) ───────────────── */
@@ -172,7 +184,7 @@ function renderList() {
         <div class="nb-dist-badge ${distBadgeClass}">${fmtDist(dist)}</div>
         <div class="nb-walk">${fmtTime(dist)}</div>
       </div>
-      <div class="nb-arrow">›</div>
+    <div class="nb-arrow"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></div>
     </div>`;
   }).join('');
 }

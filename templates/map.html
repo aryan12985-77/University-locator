@@ -37,11 +37,13 @@
       <span>Campus Navigator</span>
     </a>
     <div style="display:flex;gap:8px;align-items:center;">
-      <a href="{{ url_for('campus_directions', slug=campus.slug) }}?q={{ destination | urlencode }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;border-radius:50px;">
-        ← Directions
+      <a href="{{ url_for('campus_directions', slug=campus.slug) }}?q={{ destination | urlencode }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;border-radius:50px; display:inline-flex; align-items:center; gap:8px;">
+        <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+        Directions
       </a>
-      <a href="{{ url_for('campus_home', slug=campus.slug) }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;border-radius:50px;">
-        🔍 New Search
+      <a href="{{ url_for('campus_home', slug=campus.slug) }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;border-radius:50px; display:inline-flex; align-items:center; gap:8px;">
+        <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="M16 16L21 21"></path></svg>
+        New Search
       </a>
     </div>
   </div>
@@ -56,25 +58,36 @@
       <div class="map-route-pill" id="routeStatus">Road route waiting</div>
       <div class="map-progress-pill" id="routeProgress">Route waiting</div>
       <div class="map-progress-pill" id="routeDirectionReadout">Next: —</div>
-      <button class="map-style-btn" id="mapStyleBtn" data-mode="satellite">◈ Street</button>
+      <button class="map-style-btn" id="mapStyleBtn" data-mode="satellite" style="display:inline-flex; align-items:center; gap:8px;">
+        <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z"></path><path d="M9 4v14"></path><path d="M15 6v14"></path></svg>
+        Street
+      </button>
     </div>
 
     <!-- Compass uses device facing when available and GPS movement as fallback. -->
     <div class="map-compass-control">
-      <button class="compass-btn" id="compassBtn" title="Enable device-facing direction" aria-label="Enable device-facing direction">▲</button>
+      <button class="compass-btn" id="compassBtn" title="Enable device-facing direction" aria-label="Enable device-facing direction">
+        <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l7 12-7-3-7 3 7-12z"></path></svg>
+      </button>
       <span id="headingReadout">—</span>
     </div>
 
     <!-- Locate FAB -->
-    <button class="locate-fab" onclick="locateUser()" title="My Location"><span class="locate-glyph">⌖</span></button>
+    <button class="locate-fab" onclick="locateUser()" title="My Location"><span class="locate-glyph"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path><path d="M5.5 5.5l2 2M16.5 16.5l2 2M16.5 7.5l2-2M5.5 18.5l2-2"></path></svg></span></button>
 
     <!-- Floating info panel (populated by JS) -->
     <div class="glass floating-info" id="floatingInfo" style="display:none;">
       <div class="fi-title" id="fiTitle">—</div>
       <div class="fi-meta"  id="fiMeta">—</div>
       <div class="fi-row">
-        <a href="{{ url_for('campus_home', slug=campus.slug) }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem;">🔍 New Search</a>
-        <button class="btn-primary" onclick="locateUser()" style="padding:8px 14px;font-size:0.78rem;">📍 My Route</button>
+        <a href="{{ url_for('campus_home', slug=campus.slug) }}" class="btn-secondary" style="padding:8px 14px;font-size:0.78rem; display:inline-flex; align-items:center; gap:8px;">
+          <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="M16 16L21 21"></path></svg>
+          New Search
+        </a>
+        <button class="btn-primary" onclick="locateUser()" style="padding:8px 14px;font-size:0.78rem; display:inline-flex; align-items:center; gap:8px;">
+          <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+          My Route
+        </button>
       </div>
     </div>
   </div>
