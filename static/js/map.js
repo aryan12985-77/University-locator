@@ -529,13 +529,13 @@ function initMapControls() {
         map.removeLayer(satelliteLayer);
         streetLayer.addTo(map);
         styleBtn.dataset.mode = "street";
-        styleBtn.textContent = "✦ Satellite";
+        styleBtn.innerHTML = '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z"></path><path d="M9 4v14"></path><path d="M15 6v14"></path></svg> Satellite';
         showToast("Street map selected", 1800);
       } else {
         map.removeLayer(streetLayer);
         satelliteLayer.addTo(map);
         styleBtn.dataset.mode = "satellite";
-        styleBtn.textContent = "◈ Street";
+        styleBtn.innerHTML = '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z"></path><path d="M9 4v14"></path><path d="M15 6v14"></path></svg> Street';
         showToast("Satellite map selected", 1800);
       }
     });
@@ -695,7 +695,7 @@ function loadDestination() {
       if (panel) {
         document.getElementById("fiTitle").textContent = loc.name;
         document.getElementById("fiMeta").textContent  =
-          "🏢 " + loc.building + "  ·  " + loc.floor;
+          loc.building + "  ·  " + loc.floor;
         panel.style.display = "block";
       }
 
@@ -782,7 +782,7 @@ function onLocationFound(e) {
   } else {
     userMarker = L.marker(e.latlng, { icon: mkUserIcon() })
       .addTo(map)
-      .bindPopup("<b>📍 You are here</b><br><small>" +
+      .bindPopup("<b>You are here</b><br><small>" +
                  (e.accuracy ? "±" + Math.round(e.accuracy) + "m accuracy" : "") +
                  "</small>");
     if (displayedHeading !== null) {
@@ -814,8 +814,8 @@ function onLocationError(e) {
   locating = false;
 
   var msg = e.code === 1
-    ? "Location access denied — tap the 📍 button and allow location"
-    : "Can't detect location. Try tapping 📍 again";
+    ? "Location access denied — tap the locate button and allow location"
+    : "Can't detect location. Try tapping the locate button again";
   showToast(msg, 4000);
 }
 
@@ -852,8 +852,8 @@ function drawCampusRoute(uLat, uLng, dLat, dLng) {
   /* Update info panel */
   var fiMeta = document.getElementById("fiMeta");
   if (fiMeta && destinationData) {
-    fiMeta.textContent = "🏢 " + destinationData.building +
-                         "  ·  🚶 " + label;
+    fiMeta.textContent = destinationData.building +
+                         "  ·  " + label;
   }
 
   /* Keep both markers visible but never zoom out too far. */
@@ -885,8 +885,8 @@ function setFabState(state) {
   var fab = document.querySelector(".locate-fab");
   if (!fab) return;
   if (state === "loading") { fab.textContent = "⏳"; fab.style.background = "#1e293b"; }
-  else if (state === "active")  { fab.textContent = "📍"; fab.style.background = "#10b981"; }
-  else                          { fab.textContent = "📍"; fab.style.background = ""; }
+  else if (state === "active")  { fab.innerHTML = '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>'; fab.style.background = "#10b981"; }
+  else                          { fab.innerHTML = '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>'; fab.style.background = ""; }
 }
 
 /* ── Toast notification ─────────────────────────────────── */

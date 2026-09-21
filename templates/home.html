@@ -71,8 +71,9 @@
     </a>
     <div class="campus-header-actions">
       <div class="vgu-badge">{{ campus.name }}</div>
-      <a href="{{ url_for('campus_occupancy_page', slug=campus.slug) }}" class="btn-secondary" style="padding:8px 14px;font-size:.75rem;border-radius:50px;">
-        📊 Occupancy
+      <a href="{{ url_for('campus_occupancy_page', slug=campus.slug) }}" class="btn-secondary" style="padding:8px 14px;font-size:.75rem;border-radius:50px; display:inline-flex; align-items:center; gap:8px;">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V7"></path><path d="M10 19V4"></path><path d="M16 19v-8"></path><path d="M22 19V10"></path></svg>
+        <span>Occupancy</span>
       </a>
     </div>
   </div>
@@ -88,6 +89,7 @@
     <div class="search-outer" id="hp-search">
       <div class="search-card glass" id="searchCard">
         <div class="search-input-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="M16 16L21 21"></path></svg>
           <span class="s-placeholder" id="sPlaceholder">Search for anything...</span>
           <input
             type="text"
@@ -98,7 +100,7 @@
           >
         </div>
         <button class="search-btn" id="searchBtn" onclick="triggerSearch()">
-          <span class="btn-label">Go →</span>
+          <span class="btn-label">Go</span>
           <span class="btn-ripple"></span>
         </button>
       </div>
@@ -114,37 +116,41 @@
 
     <a href="{{ url_for('campus_nearby', slug=campus.slug) }}" class="near-me-btn" id="hp-nearby">
       <span class="nm-pulse"></span>
-      <span class="nm-icon">📍</span>
+      <span class="nm-icon">
+        <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+      </span>
       <span class="nm-text">
         <strong>Near Me</strong>
         <small>Show everything around you</small>
       </span>
-      <span class="nm-arrow">›</span>
+      <span class="nm-arrow">
+        <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+      </span>
     </a>
 
     <div class="categories" id="hp-chips">
-      <div class="cat-chip chip-sports"  onclick="quickSearch('Sports')">⚽ Sports</div>
-      <div class="cat-chip chip-food"    onclick="quickSearch('Canteen')">🍽 Food</div>
-      <div class="cat-chip chip-library" onclick="quickSearch('Library')">📚 Library</div>
-      <div class="cat-chip chip-medical" onclick="quickSearch('Medical')">🏥 Medical</div>
-      <div class="cat-chip chip-admin"   onclick="quickSearch('Office')">🏛 Office</div>
-      <div class="cat-chip chip-parking" onclick="quickSearch('Parking')">🚗 Parking</div>
+      <div class="cat-chip chip-sports"  onclick="quickSearch('Sports')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10H7z"></path><path d="M9 9h6v6H9z"></path><path d="M12 3v3M12 18v3M3 12h3M18 12h3"></path></svg> Sports</div>
+      <div class="cat-chip chip-food"    onclick="quickSearch('Canteen')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v7"></path><path d="M10 3v7"></path><path d="M14 3v7"></path><path d="M18 3v7"></path><path d="M4 11h16l-1 9H5l-1-9z"></path></svg> Food</div>
+      <div class="cat-chip chip-library" onclick="quickSearch('Library')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H20v14H6.5A2.5 2.5 0 0 0 4 20.5z"></path><path d="M4 6.5V20"></path><path d="M8 8h8M8 12h8"></path></svg> Library</div>
+      <div class="cat-chip chip-medical" onclick="quickSearch('Medical')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path><path d="M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z"></path></svg> Medical</div>
+      <div class="cat-chip chip-admin"   onclick="quickSearch('Office')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V7.5A1.5 1.5 0 0 1 5.5 6H18.5A1.5 1.5 0 0 1 20 7.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M8 10h8"></path><path d="M8 14h8"></path></svg> Office</div>
+      <div class="cat-chip chip-parking" onclick="quickSearch('Parking')"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h6.5a4.5 4.5 0 0 1 0 9H5z"></path><path d="M5 13v7"></path><path d="M12 4h3.5a3.5 3.5 0 0 1 0 7H12"></path></svg> Parking</div>
     </div>
 
     <!-- POPULAR PLACES -->
     <div class="popular-wrap" id="hp-popular">
-      <div class="popular-label">🔥 Popular Places</div>
+      <div class="popular-label"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6"></path><path d="M12 16v6"></path><path d="M4 12h6"></path><path d="M14 12h6"></path><circle cx="12" cy="12" r="3"></circle></svg> Popular Places</div>
       <div class="popular-scroll">
         {% for place in featured_locations %}
         <div class="pop-card" onclick="quickSearch({{ place.name | tojson }})">
-          <div class="pop-icon" style="background:linear-gradient(135deg,#4f46e5,#06b6d4)">📍</div>
+          <div class="pop-icon" style="background:linear-gradient(135deg,#4f46e5,#06b6d4)"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></div>
           <div class="pop-name">{{ place.name }}</div>
           <div class="pop-sub">{{ place.building }} · {{ place.floor }}</div>
         </div>
         {% endfor %}
         {% if not featured_locations %}
         <div class="pop-card">
-          <div class="pop-icon" style="background:linear-gradient(135deg,#4f46e5,#06b6d4)">＋</div>
+          <div class="pop-icon" style="background:linear-gradient(135deg,#4f46e5,#06b6d4)"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></div>
           <div class="pop-name">Add your first place</div>
           <div class="pop-sub">Use Campus Builder</div>
         </div>
@@ -155,19 +161,19 @@
     <!-- STATS BAR -->
     <div class="stats-glass" id="hp-stats">
       <div class="stat-item">
-        <div class="stat-icon">📍</div>
+        <div class="stat-icon"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></div>
         <div class="stat-num count-up" data-target="{{ stats.locations }}">0</div>
         <div class="stat-lbl">Locations</div>
       </div>
       <div class="stat-divider"></div>
       <div class="stat-item">
-        <div class="stat-icon">🏗</div>
+        <div class="stat-icon"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V7.5A1.5 1.5 0 0 1 5.5 6H18.5A1.5 1.5 0 0 1 20 7.5V20"></path><path d="M9 20v-4h6v4"></path><path d="M8 10h8"></path><path d="M8 14h8"></path></svg></div>
         <div class="stat-num count-up" data-target="{{ stats.buildings }}">0</div>
         <div class="stat-lbl">Buildings</div>
       </div>
       <div class="stat-divider"></div>
       <div class="stat-item">
-        <div class="stat-icon">📡</div>
+        <div class="stat-icon"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h4l2-6 4 12 2-6h4"></path></svg></div>
         <div class="stat-num">Live</div>
         <div class="stat-lbl">GPS Tracking</div>
       </div>
@@ -184,15 +190,15 @@
     <div class="campus-network-list">
       {% for item in campuses if item.slug != 'vgu-jaipur' %}
       <a class="campus-network-item {% if item.slug == campus.slug %}active{% endif %}" href="{{ url_for('campus_home', slug=item.slug) }}">
-        <span class="campus-network-icon">⌖</span>
+        <span class="campus-network-icon"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path><path d="M5.5 5.5l2 2M16.5 16.5l2 2M16.5 7.5l2-2M5.5 18.5l2-2"></path></svg></span>
         <span><strong>{{ item.name }}</strong><small>{{ item.short_name }}</small></span>
-        {% if item.slug == campus.slug %}<em>Current</em>{% else %}<span class="campus-network-arrow">→</span>{% endif %}
+        {% if item.slug == campus.slug %}<em>Current</em>{% else %}<span class="campus-network-arrow"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span>{% endif %}
       </a>
       {% endfor %}
       <a class="campus-network-item add" href="{{ url_for('setup_page') }}">
-        <span class="campus-network-icon">＋</span>
+        <span class="campus-network-icon"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span>
         <span><strong>Add another campus</strong><small>Create a new college profile</small></span>
-        <span class="campus-network-arrow">→</span>
+        <span class="campus-network-arrow"><svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span>
       </a>
     </div>
   </section>
@@ -420,7 +426,7 @@ function drawType(f) {
   if (bob > 2.5) {
     const sa = (bob-2.5)/1.5;
     [0,1,2].forEach(i => { ctx.save(); ctx.fillStyle = sc(COL_CYAN, sa); ctx.font='7px sans-serif';
-      ctx.fillText('✦', cx+(i-1)*12, hy-3-i*2); ctx.restore(); });
+      ctx.fillRect(cx+(i-1)*12-1, hy-3-i*2, 2, 2); ctx.restore(); });
   }
 }
 
@@ -549,7 +555,8 @@ function updateFootsteps(text) {
   if (len > lastInputLen) {
     for (let i = lastInputLen; i < Math.min(len, 32); i++) {
       const sp = document.createElement('span');
-      sp.className = 'footstep'; sp.textContent = '👣';
+      sp.className = 'footstep';
+      sp.innerHTML = '<svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 18V7.5C8 6 9.5 4 11.5 4s3.5 2 3.5 3.5V18"></path><path d="M5 18h14"></path><path d="M7 10h3M14 10h3"></path></svg>';
       sp.style.transform = i % 2 === 0 ? 'scaleX(-1)' : 'scaleX(1)';
       ftTrail.appendChild(sp);
     }
@@ -606,14 +613,14 @@ input.addEventListener('input', function () {
       box.innerHTML = '';
       if (!data || data.length === 0) {
         box.style.display='block';
-        box.innerHTML="<div class='sug-item'><span class='sug-ic'>⚠️</span> No results found</div>";
+        box.innerHTML="<div class='sug-item'><span class='sug-ic'><svg class='app-icon' viewBox='0 0 24 24' aria-hidden='true'><path d='M12 9v4'></path><path d='M12 17h.01'></path><path d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'></path></svg></span> No results found</div>";
         return;
       }
       box.style.display = 'block';
       data.forEach(item => {
         const d = document.createElement('div');
         d.className = 'sug-item';
-        d.innerHTML = "<span class='sug-ic'>📍</span>" + item;
+        d.innerHTML = "<span class='sug-ic'><svg class='app-icon' viewBox='0 0 24 24' aria-hidden='true'><path d='M12 21s6-5.5 6-11a6 6 0 1 0-12 0c0 5.5 6 11 6 11z'></path><circle cx='12' cy='10' r='2.5'></circle></svg></span>" + item;
         d.onclick = () => triggerSearch(item);
         box.appendChild(d);
       });
